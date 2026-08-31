@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3002",
     "targets": "node scripts/compile-target.mjs",
-    "check": "tsc --noEmit && eslint ."
+    "check": "tsc --noEmit && eslint .",
+    "glb": "node tools/glb-doctor.mjs"
   },
   "//three": "three is pinned EXACT to 0.183.2 to match 8thwall/threejs-world-effects-example, which declares three ^0.183.2. That repo is the current home of what CLAUDE.md calls examples/threejs (8thwall/8thwall/examples now only links out). @types/three is pinned to the same 0.183 minor. Bump both together, and only after a phone test.",
   "dependencies": {
@@ -17,9 +18,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@gltf-transform/core": "^4.4.2",
+    "@gltf-transform/extensions": "^4.4.2",
+    "@gltf-transform/functions": "^4.4.2",
     "@types/three": "0.183.1",
     "eslint": "^10.9.1",
     "globals": "^17.11.0",
+    "meshoptimizer": "^1.2.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
