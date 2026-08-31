@@ -7,3 +7,11 @@ dist
 # Generated at build time by vite-plugin-static-copy from
 # node_modules/@8thwall/engine-binary/dist — never commit the engine binary.
 public/external/
+
+# Local model comparison artifacts. Only the build the app actually loads is
+# committed; these exist to compare conversions side by side and would put
+# ~13 MB of near-duplicate binaries into history forever. The untouched
+# Sketchfab download lives outside the repo, in 3d-models-glb/Exports/.
+public/models/spider-001.glb
+public/models/spider-001-basecolor.glb
+public/models/spider-001-metalrough.glb

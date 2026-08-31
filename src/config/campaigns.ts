@@ -22,10 +22,21 @@ export const campaigns = {
   "spider-001": {
     targetName: "spider-001",
     targetJson: "/targets/spider-001/spider-001.json",
-    model: "/models/spider.glb",
+    // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
+    // path to compare. See tools/README.md.
+    //   spider-001.glb                    original download; renders WHITE
+    //   spider-001-basecolor.glb          same textures at full PNG size, 5.07 MB
+    //   spider-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
+    //   spider-001-metalrough.glb         full conversion, adds a derived map
+    // Only the active build and spider-002 are committed; the rest are local
+    // comparison artifacts (see .gitignore).
+    model: "/models/spider-001-basecolor-small.glb",
     scale: 1,
-    idleAnim: "Idle",
-    animations: ["Idle", "Dance", "Jump"],
+    idleAnim: "Animation",
+    // Clip names come from `gltf-transform inspect public/models/spider-001.glb`,
+    // not from memory. This Sketchfab T-Rex ships exactly one clip, literally
+    // named "Animation".
+    animations: ["Animation"],
   },
 } satisfies Record<string, Campaign>;
 
@@ -61,6 +72,16 @@ export async function loadTargetData(campaign: Campaign): Promise<unknown> {
   if (!response.ok) {
     throw new Error(
       `target ${campaign.targetJson} returned ${String(response.status)}`,
+    );
+  }
+  // /ar/<id> is rewritten to index.html, so a wrong target path comes back as
+  // 200 text/html rather than a 404. Without this check, response.json() fails
+  // with "Unexpected token '<'", which names neither the file nor the cause.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("json")) {
+    throw new Error(
+      `target ${campaign.targetJson} returned ${contentType}, not JSON. ` +
+        `A served index.html here means the file does not exist at that path.`,
     );
   }
   return response.json();
