@@ -64,6 +64,9 @@ Camera needs HTTPS or localhost. Phone testing: `npm run dev` + `ngrok http 3002
 ## Layout
 
 ```
+art/
+  make-sticker.mjs        generates sticker artwork as SVG (no deps)
+  <id>.svg <id>.png       sticker source art — printed, and fed to `npm run targets`
 public/
   external/xr/            (generated at build, gitignored) engine binary
   targets/<id>/           <id>.json + images from image-target-cli   ← committed
@@ -174,13 +177,22 @@ testing only. **Unknown id → friendly error screen, never a fallback campaign.
 - Target source art: 1000–1500 px, high-contrast, non-repeating, no large
   flat areas. Compile with `npm run targets`. Commit the CLI output; never
   commit the source PSD/large PNG into `public/`.
-- `@8thwall/image-target-cli` is **interactive only** — its README documents no
-  flags and no positional arguments, so `compile-target.mjs` cannot be a silent
-  wrapper. It prints the exact answers to type, runs the CLI in a temp dir,
-  then moves the output into `public/targets/<id>/`, checks `name` matches the
-  campaign id, and rewrites `imagePath` to the served URL. A target whose
-  `imagePath` 404s never fires `imagescanning` and, on a phone, looks exactly
-  like artwork that will not track.
+- `@8thwall/image-target-cli` is **interactive** — no flags, no positional
+  arguments. It does read piped stdin, so `compile-target.mjs` answers its
+  prompts (path, `flat`, `y`, output folder, name), points its output folder
+  straight at `public/targets/<id>/`, checks `name` matches the campaign id,
+  and rewrites `imagePath` (written as `image-targets/<name>_luminance.<ext>`)
+  to the served URL. A target whose `imagePath` 404s never fires
+  `imagescanning` and, on a phone, looks exactly like artwork that will not
+  track. The CLI is **pinned** in the script: prompt order is the contract and
+  is not versioned. Re-read its `src/interactive.js` before bumping it.
+- The CLI's default crop is **always 3:4**. Author target art at 3:4 (portrait)
+  or 4:3 and the whole image is taken; any other aspect silently loses its
+  edges to a centred crop.
+- The engine only ever sees the **480x640 grayscale luminance image**. Judge
+  that file against the artwork gate, not the source art — hue contrast at
+  equal lightness is invisible to the tracker, and detail finer than ~4 px at
+  1050 px source does not survive the downscale.
 - Target JSON is **fetched at runtime**, not imported through the bundler, so a
   recompiled target can be swapped in `public/targets/` without a rebuild.
 - GLB: single file, embedded textures ≤ 1024², Draco or meshopt, animations
@@ -195,7 +207,16 @@ testing only. **Unknown id → friendly error screen, never a fallback campaign.
 - All files UTF-8 / LF. (The POC had UTF-16 `tsconfig.json` and `tree.json`.)
 - No dead scaffolding: no `counter.ts`, no Vite logos, no debug JSON dumps.
 - Debug panel only when `?debug=1`. Kids see: start button, scan hint,
-  character, animation buttons. Nothing else.
+  character, animation buttons, and the capture bar (shutter + record).
+  Nothing else.
+- Capture uses web APIs only — `canvas.toBlob` for photos,
+  `canvas.captureStream` + `MediaRecorder` for video, `navigator.share` with a
+  download fallback. Not `XR8.MediaRecorder`: it would pull the 5 MB
+  `media-worker.js` back into the build. The whole AR view is one canvas (the
+  engine draws the feed into the canvas three.js renders to) and the engine
+  sets `preserveDrawingBuffer: true`, so one grab is the composited shot; the
+  DOM overlay is correctly not in it. Share must be its own tap — Safari drops
+  user activation across an await.
 - Errors reach the user as one screen with one action (retry / open in
   Safari / allow camera). Camera-denied and unsupported-browser are the two
   cases that must be handled.
