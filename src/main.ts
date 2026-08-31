@@ -15,7 +15,11 @@ import {fitToTarget, setupScene} from './three/ThreeScene'
 import {fitModelToTarget, loadModel} from './three/ModelLoader'
 import {createAnimationController} from './three/AnimationController'
 import type {AnimationController} from './three/AnimationController'
+import {capturePhoto, createRecorder, isRecordingSupported, releaseCapture, shareCapture} from './capture/capture'
+import type {Capture} from './capture/capture'
 import {createAnimationButtons} from './ui/animationButtons'
+import {createCaptureBar} from './ui/captureBar'
+import {showCapturePreview} from './ui/capturePreview'
 import {createScanHint} from './ui/scanHint'
 import {createDebugPanel, isDebugEnabled} from './ui/debugPanel'
 import {detectUnsupported, showErrorScreen} from './ui/errorScreen'
@@ -76,6 +80,33 @@ async function main(): Promise<void> {
     buttons.setActive(name)
   })
 
+  // Capture is deliberately available whenever the camera is live, not only
+  // while the sticker is tracked — a child pointing the phone at a friend
+  // should still be able to take the picture.
+  const showCapture = (result: Capture): void => {
+    showCapturePreview(ui, result, {
+      onShare: shareCapture,
+      onClose: releaseCapture,
+    })
+  }
+  // A failed snapshot is not a reason to tear down a working AR session, so
+  // these never reach the error screen.
+  const onCaptureError = (error: unknown): void => console.warn('[capture] failed', error)
+
+  const recorder = createRecorder(canvas, campaignId ?? 'sticker', {
+    onResult: showCapture,
+    onStateChange: (recording) => captureBar.setRecording(recording),
+    onError: onCaptureError,
+  })
+
+  const captureBar = createCaptureBar(ui, {
+    recordingSupported: isRecordingSupported(),
+    onPhoto: () => {
+      capturePhoto(canvas, campaignId ?? 'sticker').then(showCapture, onCaptureError)
+    },
+    onToggleRecord: () => (recorder.recording ? recorder.stop() : recorder.start()),
+  })
+
   let animation: AnimationController | null = null
 
   const tracker = createImageTracker({
@@ -97,14 +128,15 @@ async function main(): Promise<void> {
     },
   })
 
-  const clock = new THREE.Clock()
+  // THREE.Clock is deprecated in three 0.183; Timer is its replacement.
+  const timer = new THREE.Timer()
   let rig: ReturnType<typeof setupScene> | null = null
   let model: THREE.Object3D | null = null
   let sized = false
 
   /** Sticker dimensions arrive with the first detection, not before. */
   const onStickerSize = (width: number, height: number): void => {
-    debug?.set('sticker', `${width.toFixed(3)} x ${height.toFixed(3)} m`)
+    debug?.set('sticker', `${width.toFixed(3)} x ${height.toFixed(3)} units`)
     if (sized || !rig || !model) return
     sized = true
     fitToTarget(rig, width, height)
@@ -117,7 +149,6 @@ async function main(): Promise<void> {
       const xr = xrScene()
       xr.scene.add(tracker.anchor)
       rig = setupScene(xr, tracker.anchor)
-      clock.start()
 
       modelPromise.then(
         (loaded) => {
@@ -133,7 +164,10 @@ async function main(): Promise<void> {
         (error: unknown) => showErrorScreen(ui, 'assets-missing', String(error)),
       )
     },
-    onUpdate: () => animation?.update(clock.getDelta()),
+    onUpdate: () => {
+      timer.update()
+      animation?.update(timer.getDelta())
+    },
   }
 
   startAR({
@@ -143,6 +177,7 @@ async function main(): Promise<void> {
     onCameraStatusChange: (status) => {
       debug?.set('camera', status)
       if (status === 'failed') showErrorScreen(ui, 'camera-denied')
+      captureBar.setVisible(status === 'hasVideo')
     },
     onException: (error) => showErrorScreen(ui, 'unknown', String(error)),
   })
