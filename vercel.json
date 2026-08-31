@@ -1,6 +1,8 @@
 {
   "rewrites": [
     {"source": "/ar", "destination": "/index.html"},
-    {"source": "/ar/(.*)", "destination": "/index.html"}
+    {"source": "/ar/(.*)", "destination": "/index.html"},
+    {"source": "/pack", "destination": "/index.html"},
+    {"source": "/pack/(.*)", "destination": "/index.html"}
   ]
 }

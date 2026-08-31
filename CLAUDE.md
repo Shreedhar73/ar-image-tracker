@@ -172,13 +172,24 @@ export const campaigns = {
 } satisfies Record<string, Campaign>
 ```
 
-Route: `/ar/<id>` (canonical, printed on stickers). `?id=` supported for
-testing only. **Unknown id → friendly error screen, never a fallback campaign.**
+Two routes, two namespaces — so a pack name and a campaign id can never be
+mistaken for one another:
 
-A page load tracks a **pack**, not one sticker: `/ar/<id>` loads every campaign
-sharing that id's `pack`, so one QR gives the child every sticker in the set.
-`/ar/<pack>` loads a pack directly; bare `/ar` works only while there is one
-pack, and is an error screen after that rather than a guess.
+```
+/ar/<campaign-id>          exactly that sticker, nothing else
+/pack/<pack-name>          every sticker in the pack
+/pack/<pack-name>?s=<id>   the pack, with <id> named as the one scanned
+```
+
+`?id=` and `?pack=` mirror the path forms, for desktop testing. **Unknown id or
+pack → friendly error screen, never a fallback campaign.** No URL at all is an
+error too, not a guess. `s` is only a hint (which model pre-loads, which buttons
+show first); a hint outside the pack is ignored, not refused.
+
+**Which route goes on a sticker is a PRINTING decision, not a code one.** Both
+are always live, so moving between "one QR gives the whole set" and "one link
+per sticker" is a reprint, not a deploy. Keep it that way: neither route may
+grow a dependency on the other being unused.
 
 **A pack is at most ten stickers** and `campaigns.ts` throws at import if one
 is bigger — but 10 is OUR policy, not an engine limit, and what this binary does
@@ -188,9 +199,8 @@ runtime target-swap on a remembered number: read
 one. Any number of targets may exist in the project; only the active set is
 capped.
 
-**The documented way back is one sticker per link**: give each campaign its own
-`pack` value and every URL tracks exactly one sticker. One field, no code
-change, nothing to revert — a pack of one is a valid pack. Keep it that way; any
+**The way back is one sticker per link**: print `/ar/<id>` instead of
+`/pack/<name>`. No code change, no registry change, nothing to revert. Any
 future work here must leave that exit intact. Above 10, the set is swapped mid-session by calling
 `XR8.XrController.configure({imageTargetData})` again after `run()`: the engine
 diffs the array, unloads what left it and loads what joined (verified in

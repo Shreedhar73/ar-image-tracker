@@ -84,6 +84,26 @@ export const campaigns = {
     animations: ["Animation"],
     pack: "creatures",
   },
+  spiderman: {
+    targetName: "spiderman",
+    // Compiled from art/spider-001.png — the GENERATED sticker (confetti,
+    // corner marks, cartoon spider), not the notebook photo that spider-001
+    // was retargeted onto in e42cb4a. Its luminance image is the better of the
+    // two against the artwork gate: contrast everywhere, no flat expanse.
+    targetJson: "/targets/spiderman/spiderman.json",
+    // POC ONLY — red-and-blue webbing is somebody else's trade dress. Swap to
+    // /models/webhero-001.glb (identical rig, identical clips, original teal
+    // costume) before ANY print run or public deploy. See tools/README.md,
+    // "webhero-001.glb".
+    model: "/models/webhero-001-spider-poc.glb",
+    scale: 1,
+    idleAnim: "Idle",
+    // From `node tools/glb-doctor.mjs public/models/webhero-001-spider-poc.glb`,
+    // not from memory. The GLB also carries "Climb", left off the button row to
+    // keep it to four.
+    animations: ["Idle", "Web Shoot", "Jump", "Perch"],
+    pack: "heroes",
+  },
 } satisfies Record<string, Campaign>;
 
 export type CampaignId = keyof typeof campaigns;
@@ -122,14 +142,10 @@ for (const [name, pack] of packs) {
         `${String(MAX_ACTIVE_TARGETS)} at once. Split it into two packs.`,
     );
   }
-  // /ar/<id> accepts a campaign id or a pack name, so the two namespaces share
-  // one URL segment and a collision would make one of them unreachable.
-  if (Object.prototype.hasOwnProperty.call(campaigns, name)) {
-    throw new Error(
-      `pack "${name}" has the same name as a campaign; /ar/${name} would be ambiguous`,
-    );
-  }
 }
+
+/** Which URL shape a session came from. */
+export type SessionRoute = "sticker" | "pack";
 
 /** What one page load tracks. */
 export interface Session {
@@ -141,56 +157,72 @@ export interface Session {
    * is holding.
    */
   primary: CampaignEntry | null;
-  /** The URL segment this was resolved from. Diagnostics only. */
-  id: string | null;
+  route: SessionRoute;
+  /** The pack name or campaign id the URL carried. Diagnostics only. */
+  id: string;
 }
 
-/**
- * `/ar/<id>` is canonical and is what gets printed. `?id=` exists for desktop
- * testing only and is not on any sticker.
- */
-export function resolveCampaignId(location: {
-  pathname: string;
-  search: string;
-}): string | null {
-  const fromPath = /^\/ar\/([^/?#]+)/.exec(location.pathname)?.[1];
-  if (fromPath) return decodeURIComponent(fromPath);
-  return new URLSearchParams(location.search).get("id");
-}
+const STICKER_PATH = /^\/ar\/([^/?#]+)/;
+const PACK_PATH = /^\/pack\/([^/?#]+)/;
 
 /**
- * Resolves the URL to the set of stickers this page will track:
+ * Resolves the URL to the set of stickers this page will track. Two routes,
+ * two separate namespaces — a pack name and a campaign id can never be mistaken
+ * for one another, so they are free to collide:
  *
- *   /ar/spider-001   a campaign id  -> that sticker's whole pack, it first
- *   /ar/spiders      a pack name    -> that pack, no sticker singled out
- *   /ar             no id           -> the only pack, if there is only one
+ *   /ar/<campaign-id>        exactly that sticker, and nothing else
+ *   /pack/<pack-name>        every sticker in the pack
+ *   /pack/<pack-name>?s=<id> the pack, with <id> named as the one scanned
  *
- * An unknown id returns null. It never falls back to another campaign, and the
- * no-id form deliberately fails once a second pack exists rather than guessing
- * which one the child is holding.
+ * Which one is printed on a sticker is a PRINTING decision, not a code one.
+ * Both routes are always live: putting /pack/creatures?s=spider-001 on the
+ * sticker gives the child every sticker in the set from one QR, and putting
+ * /ar/spider-001 on it gives them that sticker alone. Moving between those is a
+ * reprint, not a deploy — which is what keeps "one link per sticker" reachable
+ * without touching the registry.
+ *
+ * `?id=` and `?pack=` do the same as their path forms, for desktop testing.
+ * They are not on any sticker.
+ *
+ * An unknown id or pack returns null. It never falls back to another campaign,
+ * and no URL at all is an error rather than a guess at which sticker the child
+ * is holding.
  */
 export function resolveSession(location: {
   pathname: string;
   search: string;
 }): Session | null {
-  const id = resolveCampaignId(location);
+  const params = new URLSearchParams(location.search);
 
-  if (id === null) {
-    const only = packs.size === 1 ? [...packs.values()][0] : undefined;
-    return only ? { campaigns: only, primary: null, id: null } : null;
-  }
-
-  const campaign = getCampaign(id);
-  if (campaign) {
+  const fromPackPath = PACK_PATH.exec(location.pathname)?.[1];
+  const packName =
+    fromPackPath === undefined ? params.get("pack") : decodeURIComponent(fromPackPath);
+  if (packName !== null) {
+    const pack = packs.get(packName);
+    if (!pack) return null;
+    // `s` is only a hint: it decides which model is pre-loaded and which
+    // buttons show first. A hint naming a sticker outside this pack is ignored
+    // rather than refused — the pack is still exactly the right thing to track.
+    const scanned = params.get("s");
     return {
-      campaigns: packs.get(campaign.pack) ?? [campaign],
-      primary: campaign,
-      id,
+      campaigns: pack,
+      primary: pack.find((campaign) => campaign.id === scanned) ?? null,
+      route: "pack",
+      id: packName,
     };
   }
 
-  const pack = packs.get(id);
-  return pack ? { campaigns: pack, primary: null, id } : null;
+  const fromStickerPath = STICKER_PATH.exec(location.pathname)?.[1];
+  const stickerId =
+    fromStickerPath === undefined ? params.get("id") : decodeURIComponent(fromStickerPath);
+  if (stickerId !== null) {
+    const campaign = getCampaign(stickerId);
+    return campaign
+      ? { campaigns: [campaign], primary: campaign, route: "sticker", id: stickerId }
+      : null;
+  }
+
+  return null;
 }
 
 /** Unknown id returns null. Never fall back to another campaign. */

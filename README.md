@@ -50,10 +50,10 @@ npm run dev
 ngrok http 3002      # open the https:// URL on the phone
 ```
 
-Then visit `/ar/spider-001` or `/ar/dino-001` — either one brings up the whole
-`creatures` pack, so both stickers track in the same session. Add `?debug=1` for
-the diagnostic panel (session, camera status, tracking state, which stickers are
-in view, loaded clips).
+Then visit `/pack/creatures` — both stickers track in the same session — or
+`/ar/spider-001` for that sticker alone. Add `?debug=1` for the diagnostic panel
+(route, stickers tracked, camera status, tracking state, which stickers are in
+view, loaded clips).
 
 | Script | What it does |
 | --- | --- |
@@ -200,31 +200,37 @@ export const campaigns = {
 } satisfies Record<string, Campaign>
 ```
 
-Route: `/ar/<id>` is canonical and is what gets printed. `?id=` works for desktop
-testing only. **An unknown id shows a friendly error screen — never a fallback
-campaign.** A child scanning a frog sticker must not get a dinosaur.
-
-### One endpoint, many stickers
-
-A page load tracks a **pack**, not a single sticker. The engine holds several
-image targets at once, so scanning one sticker's QR brings up every sticker
-filed under the same `pack`: point the phone at a friend's sticker and their
-character appears too, from the same page, with no reload.
+### Two routes, two namespaces
 
 | URL | Tracks |
 | --- | --- |
-| `/ar/dino-001` | the whole `creatures` pack, dino-001's model pre-loaded |
-| `/ar/creatures` | the whole pack, nothing singled out |
-| `/ar` | the only pack — an error once a second pack exists |
+| `/ar/<campaign-id>` | exactly that sticker, and nothing else |
+| `/pack/<pack-name>` | every sticker in the pack |
+| `/pack/<pack-name>?s=<id>` | the pack, with `<id>` named as the one scanned |
+
+`?id=` and `?pack=` do the same as their path forms, for desktop testing. **An
+unknown id or pack shows a friendly error screen — never a fallback campaign.** A
+child scanning a frog sticker must not get a dinosaur. No URL at all is an error
+too, not a guess.
+
+Because the two live under different prefixes, a pack name and a campaign id can
+never be mistaken for one another and are free to collide.
+
+**Which route is printed on a sticker is a printing decision, not a code one.**
+Both are always live:
+
+- `/pack/creatures?s=spider-001` — one QR gives the child every sticker in the
+  set. Point the phone at a friend's sticker and their character appears too,
+  from the same page, with no reload. `s` decides which model is pre-loaded and
+  which buttons show first; a hint naming a sticker outside the pack is ignored,
+  not refused.
+- `/ar/spider-001` — that sticker alone. This is the fallback if packs do not
+  hold up on a device: **a reprint, not a deploy.** Nothing in the registry or
+  the code changes.
 
 A pack is at most **10 stickers** and `campaigns.ts` throws at import if one is
 bigger. That 10 is our policy, not a number the engine reports — nobody has
 measured what this binary does at target 11.
-
-**If packs do not hold up, the way back is one sticker per link, and it is a
-one-field change**: give each campaign its own `pack` value and every URL tracks
-exactly one sticker. No code edit, no route change, nothing to revert — a pack
-of one is a valid pack, and `/ar/<id>` was always the printed URL in both modes.
 
 Where the 10 came from, why a limit exists at all, what actually runs out first,
 the measurement that would settle it, and the two modes above these — see

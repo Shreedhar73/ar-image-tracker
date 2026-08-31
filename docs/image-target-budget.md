@@ -60,30 +60,34 @@ More targets does not make a tracked character slower; it makes the wait longer.
 
 ### 1. Pack — what is shipped
 
-Every campaign carries a `pack`. `/ar/<sticker-id>` loads that sticker's whole
-pack, so one QR gives the child every sticker in the set and pointing the phone
-at a friend's sticker works with no reload. `/ar/<pack>` loads a pack directly.
-Bare `/ar` works only while exactly one pack exists.
+`/pack/<name>` loads every sticker filed under that pack, so one QR gives the
+child the whole set and pointing the phone at a friend's sticker works with no
+reload. `?s=<id>` names the sticker that was scanned, which decides only which
+model pre-loads and which buttons show first.
 
 ### 2. One sticker per link — the fallback
 
-**Give each campaign its own `pack` value. That is the entire change.** No code
-edit, no route change, no revert of the multi-target work: a pack of one is a
-valid pack, and every per-sticker structure in `main.ts` already exists.
+**Print `/ar/<id>` instead of `/pack/<name>`. That is the entire change.** Both
+routes are always live, in separate namespaces, so this is a reprint and not a
+deploy: no code edit, no registry edit, no revert of the multi-target work.
 
-Verified against the real `resolveSession`, with `pack` values made unique:
+Verified against the real `resolveSession`:
 
 ```
-/ar/spider-001  -> spider-001 primary=spider-001
-/ar/dino-001    -> dino-001   primary=dino-001
-/ar             -> error screen (more than one pack)
-/ar/creatures   -> error screen (no such pack)
+/ar/spider-001                 -> sticker [spider-001]              primary=spider-001
+/ar/dino-001                   -> sticker [dino-001]                primary=dino-001
+/pack/creatures?s=dino-001     -> pack    [spider-001+dino-001]     primary=dino-001
+/pack/creatures?s=not-in-pack  -> pack    [spider-001+dino-001]     primary=none
+/pack/nope                     -> error screen
+/ar/nope                       -> error screen
+/ar, /pack, /                  -> error screen
 ```
 
-The printed URL never changes — `/ar/<id>` was always the QR contract, in both
-modes. What is lost is only the "point at a friend's sticker" behaviour. What is
-kept: lazy per-sticker model loading, per-sticker anchor/rig/mixer, the runtime
-guards, and the ability to go back to packs by editing the same field.
+What is lost in sticker mode is only the "point at a friend's sticker"
+behaviour. What is kept: lazy per-sticker model loading, per-sticker
+anchor/rig/mixer, the pack-size guard, and the ability to go back by reprinting.
+Both modes can even ship at once — different stickers in the same run can carry
+different routes.
 
 ### 3. Smaller packs
 

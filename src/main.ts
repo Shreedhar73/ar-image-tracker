@@ -60,10 +60,11 @@ async function main(): Promise<void> {
 
   const session = resolveSession(location)
   if (!session) {
-    showErrorScreen(ui, 'unknown-campaign', `id=${String(new URL(location.href).pathname)}`)
+    showErrorScreen(ui, 'unknown-campaign', `no campaign or pack at ${location.pathname}${location.search}`)
     return
   }
-  debug?.set('session', session.campaigns.map((campaign) => campaign.id).join(', '))
+  debug?.set('session', `${session.route}:${session.id}`)
+  debug?.set('tracked', session.campaigns.map((campaign) => campaign.id).join(', '))
   debug?.set('primary', session.primary?.id ?? 'none')
 
   await showStartScreen(ui)
@@ -132,7 +133,7 @@ async function main(): Promise<void> {
   // A failed snapshot is not a reason to tear down a working AR session, so
   // these never reach the error screen.
   const onCaptureError = (error: unknown): void => console.warn('[capture] failed', error)
-  const captureName = (): string => active?.campaign.id ?? session.id ?? 'sticker'
+  const captureName = (): string => active?.campaign.id ?? session.id
 
   const recorder = createRecorder(canvas, captureName, {
     onResult: showCapture,
