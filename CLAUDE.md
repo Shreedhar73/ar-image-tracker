@@ -81,7 +81,9 @@ src/
   three/AnimationController.ts  mixer + crossfade (kept from POC)
   ui/                     start screen, scan hint, animation buttons, error screen
 scripts/compile-target.mjs
-vercel.json               rewrite /ar/* → /index.html
+docs/image-target-budget.md  how many stickers one page can track, and the
+                          one-field way back to one sticker per link
+vercel.json               rewrite /ar and /ar/* → /index.html
 ```
 
 One file, one job. No god-`main.ts` like the POC.
@@ -165,12 +167,40 @@ export const campaigns = {
     scale: 1,
     idleAnim: 'Idle',
     animations: ['Idle', 'Dance', 'Jump'],   // buttons shown, in order
+    pack: 'pond',                            // stickers tracked in one session
   },
 } satisfies Record<string, Campaign>
 ```
 
 Route: `/ar/<id>` (canonical, printed on stickers). `?id=` supported for
 testing only. **Unknown id → friendly error screen, never a fallback campaign.**
+
+A page load tracks a **pack**, not one sticker: `/ar/<id>` loads every campaign
+sharing that id's `pack`, so one QR gives the child every sticker in the set.
+`/ar/<pack>` loads a pack directly; bare `/ar` works only while there is one
+pack, and is an error screen after that rather than a guess.
+
+**A pack is at most ten stickers** and `campaigns.ts` throws at import if one
+is bigger — but 10 is OUR policy, not an engine limit, and what this binary does
+at target 11 has never been measured. Do not raise it, lower it, or build the
+runtime target-swap on a remembered number: read
+`docs/image-target-budget.md` first, and replace the number only with a measured
+one. Any number of targets may exist in the project; only the active set is
+capped.
+
+**The documented way back is one sticker per link**: give each campaign its own
+`pack` value and every URL tracks exactly one sticker. One field, no code
+change, nothing to revert — a pack of one is a valid pack. Keep it that way; any
+future work here must leave that exit intact. Above 10, the set is swapped mid-session by calling
+`XR8.XrController.configure({imageTargetData})` again after `run()`: the engine
+diffs the array, unloads what left it and loads what joined (verified in
+`xr-slam.js`). Do not build that until a phone test says packs of 10 are not
+enough.
+
+Each sticker owns its anchor, shadow catcher, lights, model and mixer. A GLB
+downloads on that sticker's **first detection**, cached per campaign for the
+session; only the campaign named in the URL is fetched up front. Twenty
+characters preloaded is an out-of-memory crash on a low-end Android.
 
 ## Asset pipeline
 

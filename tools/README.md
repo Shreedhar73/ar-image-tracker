@@ -31,7 +31,7 @@ falling back to a stale one and reporting everything as fine.
 
 Exit code is non-zero when a problem is found and not fixed, so it can gate CI.
 
-## spider-001.glb — Sketchfab T-Rex
+## dino-001.glb — Sketchfab T-Rex
 
 Source: `~/Desktop/yipl_projects/3d-models-glb/Exports/animated_t-rex_dinosaur_biting_attack_loop.glb`
 
@@ -52,10 +52,10 @@ in any form). Per-pixel shininess becomes one flat roughness value; colour,
 normals and AO are untouched.
 
 ```sh
-node tools/specgloss-to-basecolor.mjs trex-src.glb spider-001-basecolor.glb
+node tools/specgloss-to-basecolor.mjs trex-src.glb dino-001-basecolor.glb
 # 6.31 -> 5.07 MB. Optionally re-encode the SAME images for phones:
-npx @gltf-transform/cli webp    spider-001-basecolor.glb tmp.glb --quality 95
-npx @gltf-transform/cli meshopt tmp.glb spider-001-basecolor-small.glb
+npx @gltf-transform/cli webp    dino-001-basecolor.glb tmp.glb --quality 95
+npx @gltf-transform/cli meshopt tmp.glb dino-001-basecolor-small.glb
 # -> 1.18 MB
 ```
 
@@ -69,7 +69,7 @@ does report `extensionsUsed: none`.
 ```sh
 npx @gltf-transform/cli metalrough trex-src.glb  trex-mr.glb
 npx @gltf-transform/cli webp       trex-mr.glb   trex-w.glb  --quality 95
-npx @gltf-transform/cli meshopt    trex-w.glb    spider-001.glb
+npx @gltf-transform/cli meshopt    trex-w.glb    dino-001.glb
 ```
 
 6.3 MB -> 1.64 MB. This bakes a NEW `metallicRoughnessTexture` out of the
@@ -78,10 +78,10 @@ that was not in the source. Prefer Option 1 when the textures must be exactly
 the source textures.
 
 One clip, named `Animation`. Verify with
-`npx @gltf-transform/cli inspect public/models/spider-001.glb` before editing
+`npx @gltf-transform/cli inspect public/models/dino-001.glb` before editing
 `campaigns.ts` — the clip list there must match exactly.
 
-## spider-002.glb — Quaternius spider (CC0)
+## spider-001.glb — Quaternius spider (CC0)
 
 See `prep-glb.mjs` in this directory: drops the three `Wasp_*` clips (they drive
 a `WaspArmature` that is not in the file) and `Spider_Death`, renames the rest

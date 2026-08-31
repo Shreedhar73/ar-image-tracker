@@ -4,6 +4,13 @@
  * The scene, camera and renderer are created by XR8.Threejs.pipelineModule();
  * this module only configures what it hands us. Never construct a second
  * WebGLRenderer — the engine already calls render() once per camera frame.
+ *
+ * Split in two because a session tracks several stickers: the renderer and the
+ * environment map are configured ONCE, while lights and a shadow catcher are
+ * built per anchor. Lights sit on the anchor so they follow the sticker — a
+ * scene-space light would swing across the character as the phone moves — and
+ * three.js skips invisible subtrees when it gathers lights, so the rig of a
+ * sticker that is not in view costs nothing.
  */
 import * as THREE from 'three'
 import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js'
@@ -18,12 +25,8 @@ export interface SceneRig {
   dispose: () => void
 }
 
-/**
- * Configures the engine's renderer and populates the anchor with lights and a
- * shadow catcher. Lights live on the anchor so they follow the sticker: a
- * scene-space light would swing across the character as the phone moves.
- */
-export function setupScene(xr: XrScene, anchor: THREE.Group): SceneRig {
+/** Renderer settings and the PBR environment. Call once per session. */
+export function setupRenderer(xr: XrScene): {dispose: () => void} {
   const {renderer, scene} = xr
 
   renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -39,11 +42,24 @@ export function setupScene(xr: XrScene, anchor: THREE.Group): SceneRig {
   const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04)
   scene.environment = envRT.texture
 
-  // Axis convention for a FLAT image target: the printed image lies in the
-  // anchor's XY plane and +Z is the surface normal (verified against
-  // 8thwall/aframe-image-targets-example, where an unrotated a-frame plane
-  // — an XY primitive — lands flush on the printed artwork). So "away from
-  // the paper" is +Z here, not +Y.
+  return {
+    dispose: () => {
+      envRT.dispose()
+      pmrem.dispose()
+    },
+  }
+}
+
+/**
+ * Populates one anchor with its lights and shadow catcher.
+ *
+ * Axis convention for a FLAT image target: the printed image lies in the
+ * anchor's XY plane and +Z is the surface normal (verified against
+ * 8thwall/aframe-image-targets-example, where an unrotated a-frame plane
+ * — an XY primitive — lands flush on the printed artwork). So "away from
+ * the paper" is +Z here, not +Y.
+ */
+export function createAnchorRig(anchor: THREE.Group): SceneRig {
   const hemi = new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.2)
   hemi.position.set(0, 0, 1)
 
@@ -77,8 +93,6 @@ export function setupScene(xr: XrScene, anchor: THREE.Group): SceneRig {
     keyLight,
     shadowCatcher,
     dispose: () => {
-      envRT.dispose()
-      pmrem.dispose()
       shadowCatcher.geometry.dispose()
       shadowCatcher.material.dispose()
     },
@@ -87,7 +101,7 @@ export function setupScene(xr: XrScene, anchor: THREE.Group): SceneRig {
 
 /**
  * Sizes the shadow catcher and the shadow frustum to the tracked sticker.
- * Call on the first imagefound, when scaledWidth/Height become known.
+ * Call on that sticker's first imagefound, when scaledWidth/Height become known.
  */
 export function fitToTarget(rig: SceneRig, width: number, height: number): void {
   rig.shadowCatcher.geometry.dispose()

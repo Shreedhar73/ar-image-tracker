@@ -75,7 +75,10 @@ export interface Recorder {
 
 export function createRecorder(
   canvas: HTMLCanvasElement,
-  baseName: string,
+  // Resolved when the recording ENDS, not when the recorder is built: a session
+  // tracks several stickers, and the file should be named after the one that
+  // was actually filmed.
+  baseName: () => string,
   handlers: RecorderHandlers,
 ): Recorder {
   let recorder: MediaRecorder | null = null
@@ -108,7 +111,7 @@ export function createRecorder(
           recorder = null
           handlers.onStateChange(false)
           const extension = mimeType.includes('mp4') ? 'mp4' : 'webm'
-          handlers.onResult(toCapture(new Blob(chunks, {type: mimeType}), 'video', baseName, extension))
+          handlers.onResult(toCapture(new Blob(chunks, {type: mimeType}), 'video', baseName(), extension))
         }
         active.onerror = (event) => {
           clearAutoStop()
