@@ -1,0 +1,9 @@
+node_modules
+dist
+.vercel
+.DS_Store
+*.local
+
+# Generated at build time by vite-plugin-static-copy from
+# node_modules/@8thwall/engine-binary/dist — never commit the engine binary.
+public/external/

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#000000" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AR Sticker</title>
+
+    <!--
+      Root-absolute on purpose. /ar/<id> is rewritten to this file, so a
+      relative "./external/xr/xr.js" would resolve to /ar/external/xr/xr.js
+      and 404. The engine is served from our own origin; never a CDN.
+    -->
+    <script src="/external/xr/xr.js" async data-preload-chunks="slam"></script>
+
+    <link rel="stylesheet" href="/src/ui/styles.css" />
+  </head>
+  <body>
+    <canvas id="camerafeed"></canvas>
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
