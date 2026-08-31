@@ -38,7 +38,7 @@ export interface ImageTracker {
   readonly anchor: THREE.Group
   readonly module: PipelineModule
   readonly state: TrackingState
-  /** Sticker size in metres, known from the first imagefound. */
+  /** Sticker size in scene units, known from the first imagefound. */
   readonly scaledWidth: number | null
   readonly scaledHeight: number | null
 }

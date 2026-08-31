@@ -15,12 +15,23 @@ import {XR8Promise} from '@8thwall/engine-binary'
 /** Payload of `reality.imagefound` / `imageupdated` / `imagelost`. */
 export interface ImageTargetDetail {
   name: string
-  type: 'FLAT' | 'CYLINDRICAL' | 'CONICAL'
+  /**
+   * The docs call a flat target 'FLAT'; image-target-cli writes 'PLANAR' into
+   * the target JSON. Which string reaches this event has not been verified on
+   * a device, and nothing here reads it, so it stays a plain string rather
+   * than a union that could be wrong.
+   */
+  type: string
   position: {x: number; y: number; z: number}
   /** Quaternion, w first. `THREE.Quaternion.set()` takes (x, y, z, w). */
   rotation: {w: number; x: number; y: number; z: number}
   scale: number
-  /** FLAT targets only — metres. This is what model + shadow size derive from. */
+  /**
+   * Flat targets only. Scene units, not centimetres — `XrController.configure`
+   * runs with the default `scale: 'responsive'`, so this is relative to the
+   * initial camera position, which is exactly why sizing the model from it
+   * gives the same on-screen character on every device.
+   */
   scaledWidth?: number
   scaledHeight?: number
 }
@@ -66,6 +77,24 @@ function requireXR8(): any {
   return xr8
 }
 
+/**
+ * The engine builds its renderer from the canvas's `width`/`height`
+ * ATTRIBUTES, which default to 300x150 on a bare <canvas>. three.js
+ * `WebGLRenderer.setSize()` then writes that size back as an INLINE style,
+ * which outranks the stylesheet — so a full-screen CSS rule alone leaves the
+ * camera feed as a 300x150 box in the corner. Sizing the attributes to the
+ * viewport before `run()` is what actually makes the feed full-screen.
+ */
+function sizeCanvasToViewport(canvas: HTMLCanvasElement): void {
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  // setSize() will rewrite these as pixel values derived from the attributes
+  // above, which comes to the same box; setting them as percentages here means
+  // the feed is full-screen even in the frames before it runs.
+  canvas.style.width = '100%'
+  canvas.style.height = '100%'
+}
+
 export interface StartArOptions {
   canvas: HTMLCanvasElement
   /** Parsed target JSON produced by @8thwall/image-target-cli. Empty = no image tracking. */
@@ -92,6 +121,8 @@ export function startAR(options: StartArOptions): void {
 
   ;(window as any).THREE = THREE
 
+  sizeCanvasToViewport(options.canvas)
+
   XR8.XrController.configure({
     disableWorldTracking: true, // stickers are image targets only; no SLAM
     imageTargetData: options.imageTargetData,
@@ -112,6 +143,18 @@ export function startAR(options: StartArOptions): void {
   ])
 
   XR8.run({canvas: options.canvas, allowedDevices: XR8.XrConfig.device().ANY})
+
+  // Rotating a phone changes the viewport; without this the feed keeps the old
+  // dimensions and letterboxes.
+  //
+  // Resizing the canvas is deliberately ALL this does. The engine watches the
+  // canvas size and calls XrController.updateCameraProjectionMatrix itself,
+  // with {cam: {pixelRectWidth, pixelRectHeight, nearClipPlane, farClipPlane},
+  // origin, facing} — read out of xr.js. Calling it from here would mean
+  // supplying an origin and facing we do not have.
+  const onViewportChange = (): void => sizeCanvasToViewport(options.canvas)
+  window.addEventListener('resize', onViewportChange)
+  window.addEventListener('orientationchange', onViewportChange)
 }
 
 /** The three.js objects the engine created. Plain three.js — treat them as ours. */

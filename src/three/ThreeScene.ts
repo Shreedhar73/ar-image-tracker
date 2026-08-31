@@ -86,7 +86,7 @@ export function setupScene(xr: XrScene, anchor: THREE.Group): SceneRig {
 }
 
 /**
- * Sizes the shadow catcher and the shadow frustum to the physical sticker.
+ * Sizes the shadow catcher and the shadow frustum to the tracked sticker.
  * Call on the first imagefound, when scaledWidth/Height become known.
  */
 export function fitToTarget(rig: SceneRig, width: number, height: number): void {
