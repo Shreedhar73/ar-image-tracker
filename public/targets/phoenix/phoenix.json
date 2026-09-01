@@ -1,0 +1,21 @@
+{
+  "imagePath": "/targets/phoenix/phoenix_luminance.png",
+  "metadata": null,
+  "name": "phoenix",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 162,
+    "width": 1072,
+    "height": 1429,
+    "isRotated": true,
+    "originalWidth": 1072,
+    "originalHeight": 1752
+  },
+  "resources": {
+    "thumbnailImage": "phoenix_thumbnail.png",
+    "luminanceImage": "phoenix_luminance.png"
+  },
+  "created": 1788249934672,
+  "updated": 1788249934672
+}

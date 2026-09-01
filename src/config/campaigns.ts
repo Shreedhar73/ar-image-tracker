@@ -84,6 +84,24 @@ export const campaigns = {
     animations: ["Animation"],
     pack: "creatures",
   },
+  phoenix: {
+    targetName: "phoenix",
+    targetJson: "/targets/phoenix/phoenix.json",
+    // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
+    // path to compare. See tools/README.md.
+    //   dino-001.glb                    original download; renders WHITE
+    //   dino-001-basecolor.glb          same textures at full PNG size, 5.07 MB
+    //   dino-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
+    //   dino-001-metalrough.glb         full conversion, adds a derived map
+    // Only the active build is committed; the rest are local comparison
+    // artifacts (see .gitignore).
+    model: "/models/phoenix_bird.glb",
+    scale: 1,
+    idleAnim: "Take 001",
+    // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
+    animations: ["Take 001"],
+    pack: "creatures",
+  },
   spiderman: {
     targetName: "spiderman",
     // Compiled from art/spider-001.png — the GENERATED sticker (confetti,
