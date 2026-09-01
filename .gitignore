@@ -15,3 +15,8 @@ public/external/
 public/models/dino-001.glb
 public/models/dino-001-basecolor.glb
 public/models/dino-001-metalrough.glb
+
+# Raw supplied models that have not been through `npm run slim` yet. The
+# 71 MB MultiVersus Superman rip is a source file, not a deliverable; only its
+# slimmed output belongs in git.
+public/models/superman.glb

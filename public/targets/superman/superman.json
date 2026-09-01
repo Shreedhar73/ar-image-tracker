@@ -1,0 +1,21 @@
+{
+  "imagePath": "/targets/superman/superman_luminance.jpg",
+  "metadata": null,
+  "name": "superman",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 54,
+    "width": 640,
+    "height": 853,
+    "isRotated": false,
+    "originalWidth": 640,
+    "originalHeight": 960
+  },
+  "resources": {
+    "thumbnailImage": "superman_thumbnail.jpg",
+    "luminanceImage": "superman_luminance.jpg"
+  },
+  "created": 1788241605507,
+  "updated": 1788241605507
+}

@@ -104,6 +104,28 @@ export const campaigns = {
     animations: ["Idle", "Web Shoot", "Jump", "Perch"],
     pack: "heroes",
   },
+  superman: {
+    targetName: "superman",
+    // Compiled from art/superman.jpg, a photo of a costumed statue lit from the
+    // front. 640x960 is 2:3, so the CLI's fixed 3:4 crop kept 640x853 from
+    // top: 54 and dropped the rest — read the numbers off superman.json, not
+    // off the source. The luminance image passes the artwork gate on the chest
+    // emblem, the face and the folds behind it; the concrete wall is the one
+    // flat expanse and it sits at the edges.
+    targetJson: "/targets/superman/superman.json",
+    // POC ONLY — both the target art and this model are somebody else's
+    // trade dress. Swap to /models/webhero-001.glb (identical rig, identical
+    // clips, original teal costume) and recompile the target from original art
+    // before ANY print run or public deploy. See tools/README.md.
+    model: "/models/superman-slim.glb",
+    scale: 1,
+    idleAnim: "Idle",
+    // From `node tools/glb-doctor.mjs public/models/superman-slim.glb`, not
+    // from memory. tools/slim-glb.mjs cut the source's 180 clips to exactly
+    // these four, so the GLB carries nothing else to show.
+    animations: ["Laser", "Jump", "Idle", "Fly"],
+    pack: "heroes",
+  },
 } satisfies Record<string, Campaign>;
 
 export type CampaignId = keyof typeof campaigns;
@@ -196,7 +218,9 @@ export function resolveSession(location: {
 
   const fromPackPath = PACK_PATH.exec(location.pathname)?.[1];
   const packName =
-    fromPackPath === undefined ? params.get("pack") : decodeURIComponent(fromPackPath);
+    fromPackPath === undefined
+      ? params.get("pack")
+      : decodeURIComponent(fromPackPath);
   if (packName !== null) {
     const pack = packs.get(packName);
     if (!pack) return null;
@@ -214,11 +238,18 @@ export function resolveSession(location: {
 
   const fromStickerPath = STICKER_PATH.exec(location.pathname)?.[1];
   const stickerId =
-    fromStickerPath === undefined ? params.get("id") : decodeURIComponent(fromStickerPath);
+    fromStickerPath === undefined
+      ? params.get("id")
+      : decodeURIComponent(fromStickerPath);
   if (stickerId !== null) {
     const campaign = getCampaign(stickerId);
     return campaign
-      ? { campaigns: [campaign], primary: campaign, route: "sticker", id: stickerId }
+      ? {
+          campaigns: [campaign],
+          primary: campaign,
+          route: "sticker",
+          id: stickerId,
+        }
       : null;
   }
 
