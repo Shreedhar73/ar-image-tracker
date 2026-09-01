@@ -25,8 +25,10 @@ import {createAnimationController} from './three/AnimationController'
 import type {AnimationController} from './three/AnimationController'
 import {capturePhoto, createRecorder, isRecordingSupported, releaseCapture, shareCapture} from './capture/capture'
 import type {Capture} from './capture/capture'
+import {CAPTURE_ENABLED} from './config/features'
 import {createAnimationButtons} from './ui/animationButtons'
 import {createCaptureBar} from './ui/captureBar'
+import type {CaptureBar} from './ui/captureBar'
 import {showCapturePreview} from './ui/capturePreview'
 import {createScanHint} from './ui/scanHint'
 import {createDebugPanel, isDebugEnabled} from './ui/debugPanel'
@@ -121,33 +123,12 @@ async function main(): Promise<void> {
   let active: TargetRuntime | null = null
   const runtimes = new Map<string, TargetRuntime>()
 
-  // Capture is deliberately available whenever the camera is live, not only
-  // while a sticker is tracked — a child pointing the phone at a friend should
-  // still be able to take the picture.
-  const showCapture = (result: Capture): void => {
-    showCapturePreview(ui, result, {
-      onShare: shareCapture,
-      onClose: releaseCapture,
-    })
-  }
-  // A failed snapshot is not a reason to tear down a working AR session, so
-  // these never reach the error screen.
-  const onCaptureError = (error: unknown): void => console.warn('[capture] failed', error)
-  const captureName = (): string => active?.campaign.id ?? session.id
-
-  const recorder = createRecorder(canvas, captureName, {
-    onResult: showCapture,
-    onStateChange: (recording) => captureBar.setRecording(recording),
-    onError: onCaptureError,
-  })
-
-  const captureBar = createCaptureBar(ui, {
-    recordingSupported: isRecordingSupported(),
-    onPhoto: () => {
-      capturePhoto(canvas, captureName()).then(showCapture, onCaptureError)
-    },
-    onToggleRecord: () => (recorder.recording ? recorder.stop() : recorder.start()),
-  })
+  // Unplugged for the POC — see CAPTURE_ENABLED. Null here means the bar is
+  // never built and the whole capture layer stays cold; every use of it below
+  // is optional-chained, so flipping the flag is the only change needed.
+  const captureBar = CAPTURE_ENABLED
+    ? wireCapture(ui, canvas, () => active?.campaign.id ?? session.id)
+    : null
 
   const tracker = createImageTracker({
     targetNames: session.campaigns.map((campaign) => campaign.targetName),
@@ -256,10 +237,50 @@ async function main(): Promise<void> {
     onCameraStatusChange: (status) => {
       debug?.set('camera', status)
       if (status === 'failed') showErrorScreen(ui, 'camera-denied')
-      captureBar.setVisible(status === 'hasVideo')
+      captureBar?.setVisible(status === 'hasVideo')
     },
     onException: (error) => showErrorScreen(ui, 'unknown', String(error)),
   })
+}
+
+/**
+ * Builds the capture bar and everything behind it: shutter, recorder, preview
+ * and native share.
+ *
+ * Lifted out of `main` so the whole feature is one call that is either made or
+ * not — the POC does not make it (`CAPTURE_ENABLED`). `campaignName` is read
+ * lazily because the sticker being followed changes while the bar stays up.
+ */
+function wireCapture(
+  ui: HTMLElement,
+  canvas: HTMLCanvasElement,
+  campaignName: () => string,
+): CaptureBar {
+  const showCapture = (result: Capture): void => {
+    showCapturePreview(ui, result, {
+      onShare: shareCapture,
+      onClose: releaseCapture,
+    })
+  }
+  // A failed snapshot is not a reason to tear down a working AR session, so
+  // these never reach the error screen.
+  const onCaptureError = (error: unknown): void => console.warn('[capture] failed', error)
+
+  const recorder = createRecorder(canvas, campaignName, {
+    onResult: showCapture,
+    onStateChange: (recording) => bar.setRecording(recording),
+    onError: onCaptureError,
+  })
+
+  const bar = createCaptureBar(ui, {
+    recordingSupported: isRecordingSupported(),
+    onPhoto: () => {
+      capturePhoto(canvas, campaignName()).then(showCapture, onCaptureError)
+    },
+    onToggleRecord: () => (recorder.recording ? recorder.stop() : recorder.start()),
+  })
+
+  return bar
 }
 
 main().catch((error: unknown) => {

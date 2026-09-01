@@ -247,8 +247,14 @@ characters preloaded is an out-of-memory crash on a low-end Android.
 - All files UTF-8 / LF. (The POC had UTF-16 `tsconfig.json` and `tree.json`.)
 - No dead scaffolding: no `counter.ts`, no Vite logos, no debug JSON dumps.
 - Debug panel only when `?debug=1`. Kids see: start button, scan hint,
-  character, animation buttons, and the capture bar (shutter + record).
-  Nothing else.
+  character and animation buttons. Nothing else.
+- **Capture is UNPLUGGED for the POC** — out of scope, not broken.
+  `CAPTURE_ENABLED` in `src/config/features.ts` is `false`, so `main.ts` never
+  calls `wireCapture()` and no capture bar is built. The code stays whole
+  (`src/capture/`, `ui/captureBar.ts`, `ui/capturePreview.ts`, the `.capture-*`
+  CSS) — do not delete it, and do not "clean up" what looks unused. Flipping
+  that one constant is the whole way back. The rules below apply the moment it
+  is flipped:
 - Capture uses web APIs only — `canvas.toBlob` for photos,
   `canvas.captureStream` + `MediaRecorder` for video, `navigator.share` with a
   download fallback. Not `XR8.MediaRecorder`: it would pull the 5 MB

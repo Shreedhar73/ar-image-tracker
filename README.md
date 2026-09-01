@@ -20,14 +20,15 @@ is no backend.
 | 1 — Boot | Engine loads, camera feed visible | Working on device |
 | 2 — Track | Sticker detected, pose applied | Working on device |
 | 3 — Character | GLB, animation, lighting, shadow | Working on device |
-| 4 — Product UI | Start, scan hint, buttons, errors, capture | Working on device |
+| 4 — Product UI | Start, scan hint, buttons, errors | Working on device |
 | 5 — Ship | Vercel deploy, QR codes, full device matrix | Not started |
 
-Phases 1–4 have been run on a physical phone: camera feed, image tracking,
-the animated character, and both photo and video capture with native share all
-work. Video plays back with content, which is the check that matters —
-`canvas.captureStream` on a WebGL canvas is exactly where black-frame problems
-would appear.
+Phases 1–4 have been run on a physical phone: camera feed, image tracking and
+the animated character all work. Photo and video capture with native share were
+built and verified on device too — video plays back with content, which is the
+check that matters, since `canvas.captureStream` on a WebGL canvas is exactly
+where black-frame problems would appear — but capture is **unplugged for the
+POC**; see [Capture](#capture--built-tested-currently-unplugged).
 
 Not yet done: a Vercel deploy, printed QR codes, and a full device matrix
 (iOS Safari + Android Chrome + one low-end Android, cold-load timing on mobile
@@ -87,7 +88,8 @@ src/
   three/ThreeScene.ts            renderer settings, lights, shadow catcher
   three/ModelLoader.ts           GLTFLoader + Draco/meshopt, with a texture guard
   three/AnimationController.ts   mixer + crossfade
-  capture/capture.ts             photo, video, native share
+  config/features.ts             build-time switches (capture is off for the POC)
+  capture/capture.ts             photo, video, native share — currently unplugged
   ui/                            start screen, scan hint, buttons, errors, capture bar
 tools/                           asset pipeline: glb-doctor, model prep
 scripts/compile-target.mjs       image-target compiler
@@ -347,7 +349,16 @@ suffixes — never `true`, which reopens the DNS-rebinding hole the default clos
 
 ---
 
-## Capture
+## Capture — built, tested, currently unplugged
+
+> **Off in the POC.** `CAPTURE_ENABLED` in `src/config/features.ts` is `false`,
+> so `main.ts` never calls `wireCapture()` and no capture bar is built. The
+> feature was finished and verified on a phone; it was cut from the POC on
+> scope, not because anything is wrong with it. All of it is still here —
+> `src/capture/capture.ts`, `src/ui/captureBar.ts`, `src/ui/capturePreview.ts`
+> and the `.capture-*` rules in `src/ui/styles.css`. Flip the constant to `true`
+> to plug it back in; there is nothing else to restore. The rest of this section
+> describes it as it behaves when on.
 
 A shutter and a record toggle sit over the camera feed. Capturing opens a preview
 with a Share button that hands the file to the OS share sheet, falling back to a
