@@ -109,9 +109,14 @@ export const campaigns = {
     // Compiled from art/superman.jpg, a photo of a costumed statue lit from the
     // front. 640x960 is 2:3, so the CLI's fixed 3:4 crop kept 640x853 from
     // top: 54 and dropped the rest — read the numbers off superman.json, not
-    // off the source. The luminance image passes the artwork gate on the chest
-    // emblem, the face and the folds behind it; the concrete wall is the one
-    // flat expanse and it sits at the edges.
+    // off the source. UNTESTED ON A PHONE, and the luminance image is the
+    // reason to test it before trusting it: judged as grayscale rather than as
+    // the source photo, trackable detail clusters in the top half — hair, face,
+    // the drape silhouette, the wall's horizontal band — while the bottom
+    // ~40% is the suit, one large near-flat black expanse. The emblem reads as
+    // a shape but not as contrast: red on yellow is near-uniform grey once hue
+    // is gone. If tracking is jittery or will not acquire, this framing is the
+    // first suspect; recrop higher or relight the source.
     targetJson: "/targets/superman/superman.json",
     // POC ONLY — both the target art and this model are somebody else's
     // trade dress. Swap to /models/webhero-001.glb (identical rig, identical
