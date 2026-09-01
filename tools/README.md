@@ -31,6 +31,93 @@ falling back to a stale one and reporting everything as fine.
 
 Exit code is non-zero when a problem is found and not fixed, so it can gate CI.
 
+## `npm run slim` — bring ANY model down to the 2 MB budget
+
+```sh
+npm run slim -- <in.glb> <out.glb>
+npm run slim -- <in.glb> <out.glb> --keep Idle=C003_Idle_01,Jump=C003_Jump_01
+```
+
+The generic counterpart to the one-off prep scripts below. It knows nothing
+about any particular character: everything it removes is either unreferenced by
+the file itself, or named on the command line.
+
+Pipeline, in this order, printing the serialised size after each step:
+
+| Step | Removes |
+| --- | --- |
+| clips | everything not in `--keep`, and renames what is |
+| `resample` | redundant keyframes |
+| `prune` | dead vertex attributes (unused UV sets), empty nodes, orphans |
+| `dedup` | duplicate accessors, textures, materials |
+| `weld` | duplicate vertices |
+| `textureCompress` | re-encodes to WebP at 1024px, quality 90 |
+| `meshopt` | quantises and compresses everything above |
+
+Order is load-bearing: `prune` runs before `weld`, because dead `TEXCOORD_1..8`
+make otherwise-identical vertices unweldable, and `meshopt` runs last because it
+rewrites what every earlier step produced.
+
+It refuses two things rather than producing a bad file:
+
+- **A model three.js cannot render.** Checked with the same
+  extension list `npm run glb` reads out of the installed GLTFLoader. Shrinking
+  a spec/gloss model only gives a smaller white model, so it exits and points at
+  `npm run glb`.
+- **Keeping every clip when animation alone busts the budget.** It prints the
+  per-clip byte list and exits, because nothing generic can choose which four
+  clips a child needs.
+
+Then it re-reads the file it wrote and verifies skins, joint count, base-colour
+texture, extensions, and the clip names **against what `--keep` asked for** —
+never against the input's own list, which would be a check that cannot go red.
+
+### Disposing an animation is not enough
+
+`anim.dispose()` only DETACHES its channels and samplers; gltf-transform's docs
+are explicit that undisposed properties stay in the document. Each orphan
+sampler still counts as a parent of its input/output accessors, so `prune()`
+will not collect them. Dropping 176 of superman's 180 clips that way left
+**196,986 dead accessors** — worth only 17 MB of array data but ~30 MB of glTF
+JSON describing it. The file came out at 32 MB and looked like a floor.
+Dispose the subtree leaf-first: channels, then samplers, then the animation.
+
+`prep-glb.mjs` has the same shape and was never bitten by it — eight clips, so
+the orphans cost kilobytes.
+
+### Measured
+
+| Model | Before | After | Notes |
+| --- | --- | --- | --- |
+| `superman.glb` | 71.71 MB | **1.07 MB** | 180 clips -> 4 |
+| `webhero-001.glb` | 0.41 MB | 0.36 MB | already healthy; pass-through does not damage it |
+
+### Checking the animation survived
+
+The size report says nothing about whether the motion still looks right.
+`verify-retarget.mjs` answers that, and now works on any rig:
+
+```sh
+node tools/verify-retarget.mjs superman.glb C003_Idle_01 superman-slim.glb Idle
+# comparing 240 joint(s), normalised by sharkHat_tail2_41_62
+# worst normalised joint offset: 0.0316 head-heights — PASS
+```
+
+Two fixes were needed to point it at slimmed output at all, and both were silent
+failures rather than errors:
+
+- It now registers `MeshoptDecoder`. Without it, it cannot open a compressed
+  file — that one at least threw.
+- It reads samplers with `accessor.getElement()`, not `getArray().slice()`. A
+  meshopt file stores rotations as **normalised int16**, so the raw array is
+  ±32767 rather than ±1. Slicing it reported joint positions around `1e98` and
+  a confident FAIL.
+
+The Quaternius joint names it was written for are now a preference rather than a
+requirement: names missing from either file are dropped, and a rig sharing none
+of them falls back to every joint the two files have in common. The webhero
+numbers recorded below are therefore still comparable.
+
 ## dino-001.glb — Sketchfab T-Rex
 
 Source: `~/Desktop/yipl_projects/3d-models-glb/Exports/animated_t-rex_dinosaur_biting_attack_loop.glb`

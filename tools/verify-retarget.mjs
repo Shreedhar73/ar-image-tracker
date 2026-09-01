@@ -9,9 +9,15 @@
  */
 import {NodeIO} from '@gltf-transform/core'
 import {ALL_EXTENSIONS} from '@gltf-transform/extensions'
+import {MeshoptDecoder} from 'meshoptimizer'
 
 const [srcPath, srcClip, tgtPath, tgtClip] = process.argv.slice(2)
-const io = new NodeIO().registerExtensions(ALL_EXTENSIONS)
+// The decoder is registered because the file this most often checks is the
+// OUTPUT of tools/slim-glb.mjs, which is meshopt-compressed and cannot
+// otherwise be opened at all.
+const io = new NodeIO()
+  .registerExtensions(ALL_EXTENSIONS)
+  .registerDependencies({'meshopt.decoder': MeshoptDecoder})
 
 const qMul = (a, b) => [
   a[3]*b[0]+a[0]*b[3]+a[1]*b[2]-a[2]*b[1],
@@ -40,11 +46,13 @@ function poseAt(doc, clipName, time) {
     if (!local.has(node)) continue
     const s = ch.getSampler()
     const times = s.getInput().getArray()
-    const vals = s.getOutput().getArray()
     let f = 0
     while (f < times.length - 1 && times[f + 1] <= time) f++
-    const stride = ch.getTargetPath() === 'rotation' ? 4 : 3
-    const v = Array.from(vals.slice(f * stride, f * stride + stride))
+    // getElement, not getArray().slice: a meshopt-compressed file stores
+    // rotations as normalised int16, and the raw array is then +-32767 rather
+    // than +-1. getElement denormalises; slicing does not, and the error is
+    // silent and enormous.
+    const v = s.getOutput().getElement(f, [])
     if (ch.getTargetPath() === 'rotation') local.get(node).r = v
     if (ch.getTargetPath() === 'translation') local.get(node).t = v
   }
@@ -69,11 +77,37 @@ const tgt = await io.read(tgtPath)
 const anim = src.getRoot().listAnimations().find((a) => a.getName() === srcClip)
 const times = anim.listSamplers()[0].getInput().getArray()
 
-const probes = ['Head', 'hand_l', 'hand_r', 'foot_l', 'foot_r', 'pelvis', 'spine_03']
+// The Quaternius rigs this was written for name their joints like this. Other
+// rigs do not, so the list is a PREFERENCE, not a requirement: anything not in
+// both files is dropped, and a rig sharing none of these falls back to every
+// joint the two files have in common. Keeping the preference means the numbers
+// recorded in tools/README.md for the webhero retargets stay comparable.
+const PREFERRED = ['Head', 'hand_l', 'hand_r', 'foot_l', 'foot_r', 'pelvis', 'spine_03']
+
+const srcRest = poseAt(src, srcClip, 0)
+const tgtRest = poseAt(tgt, tgtClip, 0)
+const common = [...srcRest.keys()].filter((name) => tgtRest.has(name))
+if (common.length === 0) {
+  console.error('the two files share no joint names — there is nothing to compare')
+  process.exit(1)
+}
+const probes = PREFERRED.filter((name) => common.includes(name))
+if (probes.length === 0) probes.push(...common)
+
+// Height normaliser: the farthest joint from the rig root stands in for the
+// head on a rig that does not have one by that name.
+const farthest = (pose, names) =>
+  names.reduce((best, name) => (Math.hypot(...pose.get(name)) > Math.hypot(...pose.get(best)) ? name : best), names[0])
+const heightJoint = common.includes('Head') ? 'Head' : farthest(srcRest, common)
+
 let worst = 0, worstAt = ''
-const sHip = poseAt(src, srcClip, 0).get('Head')
-const tHip = poseAt(tgt, tgtClip, 0).get('Head')
-const sH = Math.hypot(...sHip), tH = Math.hypot(...tHip)
+const sH = Math.hypot(...srcRest.get(heightJoint))
+const tH = Math.hypot(...tgtRest.get(heightJoint))
+if (sH === 0 || tH === 0) {
+  console.error(`joint "${heightJoint}" sits at the origin — cannot normalise by it`)
+  process.exit(1)
+}
+console.log(`comparing ${String(probes.length)} joint(s), normalised by ${heightJoint}`)
 
 for (const time of times) {
   const a = poseAt(src, srcClip, time)
