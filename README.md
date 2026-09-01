@@ -50,8 +50,10 @@ npm run dev
 ngrok http 3002      # open the https:// URL on the phone
 ```
 
-Then visit `/ar/spider-001`. Add `?debug=1` for the diagnostic panel (campaign,
-camera status, tracking state, sticker size, loaded clips).
+Then visit `/pack/creatures` — both stickers track in the same session — or
+`/ar/spider-001` for that sticker alone. Add `?debug=1` for the diagnostic panel
+(route, stickers tracked, camera status, tracking state, which stickers are in
+view, loaded clips).
 
 | Script | What it does |
 | --- | --- |
@@ -186,20 +188,61 @@ error. See the exclusion list and reasoning in `vite.config.ts`.
 
 ```ts
 export const campaigns = {
-  "spider-001": {
-    targetName: "spider-001",                              // must equal `name` in the target JSON
-    targetJson: "/targets/spider-001/spider-001.json",     // fetched at runtime, not bundled
-    model: "/models/spider-001-basecolor-small.glb",
-    scale: 1,                                              // multiplier on scaledWidth, not absolute
+  "dino-001": {
+    targetName: "dino-001",                            // must equal `name` in the target JSON
+    targetJson: "/targets/dino-001/dino-001.json",     // fetched at runtime, not bundled
+    model: "/models/dino-001-basecolor-small.glb",
+    scale: 1,                                          // multiplier on scaledWidth, not absolute
     idleAnim: "Animation",
-    animations: ["Animation"],                             // button order the child sees
+    animations: ["Animation"],                         // button order the child sees
+    pack: "creatures",                                 // stickers tracked in the same session
   },
 } satisfies Record<string, Campaign>
 ```
 
-Route: `/ar/<id>` is canonical and is what gets printed. `?id=` works for desktop
-testing only. **An unknown id shows a friendly error screen — never a fallback
-campaign.** A child scanning a frog sticker must not get a dinosaur.
+### Two routes, two namespaces
+
+| URL | Tracks |
+| --- | --- |
+| `/ar/<campaign-id>` | exactly that sticker, and nothing else |
+| `/pack/<pack-name>` | every sticker in the pack |
+| `/pack/<pack-name>?s=<id>` | the pack, with `<id>` named as the one scanned |
+
+`?id=` and `?pack=` do the same as their path forms, for desktop testing. **An
+unknown id or pack shows a friendly error screen — never a fallback campaign.** A
+child scanning a frog sticker must not get a dinosaur. No URL at all is an error
+too, not a guess.
+
+Because the two live under different prefixes, a pack name and a campaign id can
+never be mistaken for one another and are free to collide.
+
+**Which route is printed on a sticker is a printing decision, not a code one.**
+Both are always live:
+
+- `/pack/creatures?s=spider-001` — one QR gives the child every sticker in the
+  set. Point the phone at a friend's sticker and their character appears too,
+  from the same page, with no reload. `s` decides which model is pre-loaded and
+  which buttons show first; a hint naming a sticker outside the pack is ignored,
+  not refused.
+- `/ar/spider-001` — that sticker alone. This is the fallback if packs do not
+  hold up on a device: **a reprint, not a deploy.** Nothing in the registry or
+  the code changes.
+
+A pack is at most **10 stickers** and `campaigns.ts` throws at import if one is
+bigger. That 10 is our policy, not a number the engine reports — nobody has
+measured what this binary does at target 11.
+
+Where the 10 came from, why a limit exists at all, what actually runs out first,
+the measurement that would settle it, and the two modes above these — see
+[`docs/image-target-budget.md`](docs/image-target-budget.md). Read it before
+changing `MAX_ACTIVE_TARGETS` or adding an eleventh sticker to a pack.
+
+Per sticker, lazily: its GLB downloads on **first sight**, not at boot, and is
+cached for the rest of the session. 20 characters at ~1.2 MB each is not
+something a phone should hold, and most of them will never be pointed at. Only
+the sticker named in the URL is fetched up front, behind the start tap. Each
+sticker gets its own anchor, shadow catcher, lights and mixer; the button bar
+follows whichever sticker came into view last.
 
 Target JSON is fetched at runtime rather than imported through the bundler, so a
 recompiled target is swappable without a rebuild.
@@ -363,7 +406,7 @@ A deploy is not done until a printed sticker has been scanned against production
 
 ## Current sticker quality — a caveat
 
-The active `spider-001` target is a photographed pen drawing on ruled notebook
+The `spider-001` target is a photographed pen drawing on ruled notebook
 paper. It **does track on a device**, but it violates several points of the
 artwork gate, so it is a weak target and worth knowing about before anyone
 blames the code for marginal tracking:
@@ -379,9 +422,14 @@ If tracking ever proves marginal — slow to acquire, or drifting along the rule
 lines — the fix is artwork, not code: redraw edge-to-edge on unlined paper, fill
 empty areas with irregular non-repeating marks, and scan it flat. Filter and
 smoothing constants are banned by `CLAUDE.md`.
-`art/spider-001.png` is a generated known-good target kept for comparison —
-`art/make-sticker.mjs` produces it from a seeded PRNG so a reprint and the
-compiled target can never drift apart.
+`dino-001` is the counter-example: `art/make-sticker.mjs dino-001` generates it
+edge-to-edge from a seeded PRNG, and it is what the compiled `dino-001` target
+comes from, so a reprint and the target can never drift apart. Each layout in
+that script differs from the others in seed, in where its large shapes sit AND
+in which creature it draws — two stickers that differ only in their speckle
+field are two stickers the engine can confuse in one frame.
+`art/spider-001.png` is the same generator's spider layout, kept for comparison;
+the compiled spider-001 target is still the photograph.
 
 ---
 

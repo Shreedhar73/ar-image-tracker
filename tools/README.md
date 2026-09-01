@@ -31,7 +31,94 @@ falling back to a stale one and reporting everything as fine.
 
 Exit code is non-zero when a problem is found and not fixed, so it can gate CI.
 
-## spider-001.glb — Sketchfab T-Rex
+## `npm run slim` — bring ANY model down to the 2 MB budget
+
+```sh
+npm run slim -- <in.glb> <out.glb>
+npm run slim -- <in.glb> <out.glb> --keep Idle=C003_Idle_01,Jump=C003_Jump_01
+```
+
+The generic counterpart to the one-off prep scripts below. It knows nothing
+about any particular character: everything it removes is either unreferenced by
+the file itself, or named on the command line.
+
+Pipeline, in this order, printing the serialised size after each step:
+
+| Step | Removes |
+| --- | --- |
+| clips | everything not in `--keep`, and renames what is |
+| `resample` | redundant keyframes |
+| `prune` | dead vertex attributes (unused UV sets), empty nodes, orphans |
+| `dedup` | duplicate accessors, textures, materials |
+| `weld` | duplicate vertices |
+| `textureCompress` | re-encodes to WebP at 1024px, quality 90 |
+| `meshopt` | quantises and compresses everything above |
+
+Order is load-bearing: `prune` runs before `weld`, because dead `TEXCOORD_1..8`
+make otherwise-identical vertices unweldable, and `meshopt` runs last because it
+rewrites what every earlier step produced.
+
+It refuses two things rather than producing a bad file:
+
+- **A model three.js cannot render.** Checked with the same
+  extension list `npm run glb` reads out of the installed GLTFLoader. Shrinking
+  a spec/gloss model only gives a smaller white model, so it exits and points at
+  `npm run glb`.
+- **Keeping every clip when animation alone busts the budget.** It prints the
+  per-clip byte list and exits, because nothing generic can choose which four
+  clips a child needs.
+
+Then it re-reads the file it wrote and verifies skins, joint count, base-colour
+texture, extensions, and the clip names **against what `--keep` asked for** —
+never against the input's own list, which would be a check that cannot go red.
+
+### Disposing an animation is not enough
+
+`anim.dispose()` only DETACHES its channels and samplers; gltf-transform's docs
+are explicit that undisposed properties stay in the document. Each orphan
+sampler still counts as a parent of its input/output accessors, so `prune()`
+will not collect them. Dropping 176 of superman's 180 clips that way left
+**196,986 dead accessors** — worth only 17 MB of array data but ~30 MB of glTF
+JSON describing it. The file came out at 32 MB and looked like a floor.
+Dispose the subtree leaf-first: channels, then samplers, then the animation.
+
+`prep-glb.mjs` has the same shape and was never bitten by it — eight clips, so
+the orphans cost kilobytes.
+
+### Measured
+
+| Model | Before | After | Notes |
+| --- | --- | --- | --- |
+| `superman.glb` | 71.71 MB | **1.07 MB** | 180 clips -> 4 |
+| `webhero-001.glb` | 0.41 MB | 0.36 MB | already healthy; pass-through does not damage it |
+
+### Checking the animation survived
+
+The size report says nothing about whether the motion still looks right.
+`verify-retarget.mjs` answers that, and now works on any rig:
+
+```sh
+node tools/verify-retarget.mjs superman.glb C003_Idle_01 superman-slim.glb Idle
+# comparing 240 joint(s), normalised by sharkHat_tail2_41_62
+# worst normalised joint offset: 0.0316 head-heights — PASS
+```
+
+Two fixes were needed to point it at slimmed output at all, and both were silent
+failures rather than errors:
+
+- It now registers `MeshoptDecoder`. Without it, it cannot open a compressed
+  file — that one at least threw.
+- It reads samplers with `accessor.getElement()`, not `getArray().slice()`. A
+  meshopt file stores rotations as **normalised int16**, so the raw array is
+  ±32767 rather than ±1. Slicing it reported joint positions around `1e98` and
+  a confident FAIL.
+
+The Quaternius joint names it was written for are now a preference rather than a
+requirement: names missing from either file are dropped, and a rig sharing none
+of them falls back to every joint the two files have in common. The webhero
+numbers recorded below are therefore still comparable.
+
+## dino-001.glb — Sketchfab T-Rex
 
 Source: `~/Desktop/yipl_projects/3d-models-glb/Exports/animated_t-rex_dinosaur_biting_attack_loop.glb`
 
@@ -52,10 +139,10 @@ in any form). Per-pixel shininess becomes one flat roughness value; colour,
 normals and AO are untouched.
 
 ```sh
-node tools/specgloss-to-basecolor.mjs trex-src.glb spider-001-basecolor.glb
+node tools/specgloss-to-basecolor.mjs trex-src.glb dino-001-basecolor.glb
 # 6.31 -> 5.07 MB. Optionally re-encode the SAME images for phones:
-npx @gltf-transform/cli webp    spider-001-basecolor.glb tmp.glb --quality 95
-npx @gltf-transform/cli meshopt tmp.glb spider-001-basecolor-small.glb
+npx @gltf-transform/cli webp    dino-001-basecolor.glb tmp.glb --quality 95
+npx @gltf-transform/cli meshopt tmp.glb dino-001-basecolor-small.glb
 # -> 1.18 MB
 ```
 
@@ -69,7 +156,7 @@ does report `extensionsUsed: none`.
 ```sh
 npx @gltf-transform/cli metalrough trex-src.glb  trex-mr.glb
 npx @gltf-transform/cli webp       trex-mr.glb   trex-w.glb  --quality 95
-npx @gltf-transform/cli meshopt    trex-w.glb    spider-001.glb
+npx @gltf-transform/cli meshopt    trex-w.glb    dino-001.glb
 ```
 
 6.3 MB -> 1.64 MB. This bakes a NEW `metallicRoughnessTexture` out of the
@@ -78,10 +165,10 @@ that was not in the source. Prefer Option 1 when the textures must be exactly
 the source textures.
 
 One clip, named `Animation`. Verify with
-`npx @gltf-transform/cli inspect public/models/spider-001.glb` before editing
+`npx @gltf-transform/cli inspect public/models/dino-001.glb` before editing
 `campaigns.ts` — the clip list there must match exactly.
 
-## spider-002.glb — Quaternius spider (CC0)
+## spider-001.glb — Quaternius spider (CC0)
 
 See `prep-glb.mjs` in this directory: drops the three `Wasp_*` clips (they drive
 a `WaspArmature` that is not in the file) and `Spider_Death`, renames the rest
@@ -97,3 +184,120 @@ const root = (await io.read(file)).getRoot()
 root.listSkins().length            // expect 1
 root.listNodes().filter(n => n.getSkin()).length   // expect 1
 ```
+
+## webhero-001.glb — a rigged, animated character assembled from CC0 parts
+
+The first character in this repo that was not supplied whole. Nothing here
+authors geometry or keyframes: two Quaternius CC0 packs are combined, and the
+costume is derived from the rig the packs already ship.
+
+Sources (CC0 1.0, licence files kept beside them in
+`~/Desktop/yipl_projects/3d-models-glb/Exports/quaternius-cc0/`):
+
+| Pack | What it gives | itch.io slug |
+| --- | --- | --- |
+| Universal Base Characters | `Superhero_Male_FullBody` — body, 65-bone rig, no clips | `universal-base-characters` |
+| Universal Animation Library | 43 clips on a mannequin | `universal-animation-library` |
+| Universal Animation Library 2 | 43 more, incl. `NinjaJump_Start`, `ClimbUp_1m` | `universal-animation-library-2` |
+
+`quaternius.com` did not resolve from this machine; the packs came from
+itch.io's free-download flow, scripted in `fetch-itch-pack.mjs`:
+
+```sh
+node tools/fetch-itch-pack.mjs universal-base-characters ubc.zip
+```
+
+Two things about that flow bite: the signed URL
+its `download_url` endpoint returns **expires in about 45 seconds**, so the
+whole chain has to run in one process, and the file endpoint is
+`POST /<slug>/file/<upload_id>?source=game_download` — NOT under the
+`/download/<key>/` path the page's own URL suggests, which 404s.
+
+The base-character `.gltf` also ships two **broken image URIs**
+(`T_Hair_1_Normal_png.png`, `T_Eye_Normal_png.png`, neither of which exists);
+strip the `_png` and it loads. Those textures prune away anyway.
+
+### The pipeline
+
+```sh
+# 1. clips, retargeted onto the superhero rig (see below)
+node tools/retarget-anim.mjs Superhero_Male_FullBody.gltf UAL1_Standard.glb s1.glb \
+  Idle_Loop=Idle Spell_Simple_Shoot="Web Shoot" Crouch_Idle_Loop=Perch
+node tools/retarget-anim.mjs s1.glb UAL2_Standard.glb s2.glb \
+  NinjaJump_Start=Jump ClimbUp_1m=Climb
+
+# 2. drop the hair/eyebrow leftovers, blow the eyeballs up into mask lenses
+node tools/prep-hero.mjs s2.glb s3.glb 1.6
+
+# 3. paint the costume  (costume = hero | spider)
+node tools/bake-suit-texture.mjs s3.glb s4.glb hero 1024
+
+# 4. the usual squeeze: 6.7 MB -> 0.42 MB
+npx @gltf-transform/cli resize  s4.glb a.glb --width 1024 --height 1024
+npx @gltf-transform/cli webp    a.glb  b.glb --quality 90
+npx @gltf-transform/cli meshopt b.glb  public/models/webhero-001.glb
+```
+
+Clips: `Idle`, `Web Shoot`, `Perch`, `Jump`, `Climb`. There is **no swing clip**
+in either library — the one animation the brief asked for that CC0 does not
+supply. It has to be hand-keyed or bought.
+
+### Why the clips need retargeting rather than copying
+
+Both packs use the same 65 bones with the same names in the same order, which
+makes a straight channel copy look safe. It is not. The superhero's bone
+lengths run 0.72x to 1.24x the mannequin's, its rest orientations differ by up
+to 17 degrees, and **every UAL channel is fully baked** — translation, rotation
+and scale on all 65 bones, every frame. Copying them across replaces the
+target's rest pose with the mannequin's while the mesh is still bound through
+the superhero's inverse bind matrices, and the body deforms.
+
+`retarget-anim.mjs` copies the *delta from rest* instead, keeps the target's
+own bone lengths, drops scale (the source's are all 1) and rescales only the
+hip translation. Watch the hip scale: the rig is Z-up out of Blender, so
+reading `translation[1]` compares the two rigs' sideways drift (0.86x) and not
+their heights (1.03x).
+
+`verify-retarget.mjs` checks the result by comparing world-space joint
+positions frame by frame, height-normalised:
+
+```sh
+node tools/verify-retarget.mjs UAL1_Standard.glb Idle_Loop out.glb Idle
+# worst normalised joint offset: 0.0431 head-heights — PASS
+```
+
+It goes red when it should: pointing it at the wrong target clip reports 0.33
+and fails. Clips with a lot of limb travel (`Jump`) land near 0.09 because the
+superhero's arms are 8% shorter — that is the proportion difference, not a
+broken retarget, and the deciding test is still looking at it.
+
+### Why the costume comes from the skin weights
+
+The base character is a bare body with a 2048px skin texture, and there is no
+UV layout written down anywhere. But the rig already partitions the body: a
+vertex whose heaviest joint is `hand_r` is a glove, `ball_l` is a boot, `Head`
+is the mask. `bake-suit-texture.mjs` rasterises those regions into UV space and
+writes a PNG with `node:zlib` — no image library, so it cannot break when a
+transitive dependency moves.
+
+Two costumes are defined in that file:
+
+- **`hero`** — teal and amber, two tones, original. This is the one that can
+  ship.
+- **`spider`** — red and blue with webbing and a chest spider. **POC ONLY.**
+  It is somebody else's trade dress; it must not reach a printed sticker or a
+  production campaign without a licence. Kept because it was asked for and it
+  exercises the pattern path.
+
+The webbing is spun in **3D, not in UV**: UV seams would cut the strands into
+unrelated fragments. Every pixel knows the model-space point it came from, so
+one sphere of spokes and rings wraps the whole torso continuously. Two details
+matter — the web's pole points **forward**, not up (pole it along world up and
+the mask becomes vertical stripes), and each red panel spins from its own
+centre, so the mask webs from the face and the torso from the sternum. Strands
+are suppressed near both poles, where they would merge into a black disc; that
+is exactly where the spider glyph goes.
+
+Which way the model faces is not recorded anywhere either. It is derived from
+the feet: the ball of the foot always sits forward of the ankle, so the
+flattened vector between them is the character's forward.

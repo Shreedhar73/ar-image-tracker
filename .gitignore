@@ -12,6 +12,11 @@ public/external/
 # committed; these exist to compare conversions side by side and would put
 # ~13 MB of near-duplicate binaries into history forever. The untouched
 # Sketchfab download lives outside the repo, in 3d-models-glb/Exports/.
-public/models/spider-001.glb
-public/models/spider-001-basecolor.glb
-public/models/spider-001-metalrough.glb
+public/models/dino-001.glb
+public/models/dino-001-basecolor.glb
+public/models/dino-001-metalrough.glb
+
+# Raw supplied models that have not been through `npm run slim` yet. The
+# 71 MB MultiVersus Superman rip is a source file, not a deliverable; only its
+# slimmed output belongs in git.
+public/models/superman.glb
