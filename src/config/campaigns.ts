@@ -84,6 +84,18 @@ export const campaigns = {
     animations: ["Animation"],
     pack: "creatures",
   },
+  frog: {
+    targetName: "frog",
+    targetJson: "/targets/frog/frog.json",
+    model: "/models/frog.glb",
+    scale: 2,
+    // This GLB ships exactly one clip, named "New" by whatever exported it.
+    // Read out of the file's JSON chunk, not from memory — "Animation" (copied
+    // from the dino entry) matches nothing here and leaves the frog frozen.
+    idleAnim: "New",
+    animations: ["New"],
+    pack: "creatures",
+  },
   phoenix: {
     targetName: "phoenix",
     targetJson: "/targets/phoenix/phoenix.json",
