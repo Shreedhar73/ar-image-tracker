@@ -4,18 +4,18 @@
   "name": "spider-001",
   "type": "PLANAR",
   "properties": {
-    "left": 0,
+    "left": 256,
     "top": 0,
-    "width": 1050,
-    "height": 1400,
+    "width": 1536,
+    "height": 2048,
     "isRotated": true,
-    "originalWidth": 1050,
-    "originalHeight": 1400
+    "originalWidth": 2048,
+    "originalHeight": 2048
   },
   "resources": {
     "thumbnailImage": "spider-001_thumbnail.png",
     "luminanceImage": "spider-001_luminance.png"
   },
-  "created": 1788178484591,
-  "updated": 1788178484591
+  "created": 1788322313795,
+  "updated": 1788322313795
 }
