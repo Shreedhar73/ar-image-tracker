@@ -59,6 +59,12 @@ skips the `vercel.json` / dev-fallback rewrite, which is where routing bugs live
       camera-relative, and holding is wrong
 - [ ] Panning until the sticker is off screen drops the cube within ~0.5 s;
       panning back re-finds it with no visible pop
+- [ ] Two stickers of the same pack side by side, both in frame: scan A, then B
+      → only B's character is on screen, never both
+- [ ] Then cover B → A comes back on its own, WITHOUT pointing away and
+      re-scanning it (this is the promotion path; nothing else exercises it)
+- [ ] Both uncovered and tracking cleanly: the character does not ping-pong
+      between the two stickers
 - [ ] Steep viewing angle (~60°) still tracks
 - [ ] Printed sticker under glare still tracks; note the failure angle
 

@@ -142,7 +142,11 @@ Nothing else from 8th Wall touches the scene. No 8th Wall UI packages
    the artwork.) GLBs are authored Y-up, so the model goes under a group
    rotated `+PI/2` about X. The shadow-catcher plane needs no rotation.
 6. Match by `detail.name === campaign.targetName`. Ignore other names.
-7. `imagelost` does NOT hide the character — it marks the anchor **held** on
+7. **One character on screen at a time.** A new `imagefound` for a different
+   sticker hides the one being shown, even while the engine can still see it —
+   the child is looking at the sticker they just scanned. The displaced sticker
+   stays `tracked`, so when the shown one is dropped it is promoted back
+   without a re-scan. `imagelost` does NOT hide the character — it marks the anchor **held** on
    its last world pose, which SLAM keeps valid as the phone moves. A held
    anchor is hidden only once it leaves the camera frustum for ~0.5 s
    (`FRAMES_OUTSIDE_BEFORE_HIDE`), i.e. when the child has pointed the phone
@@ -219,7 +223,8 @@ diffs the array, unloads what left it and loads what joined (verified in
 `xr-slam.js`). Do not build that until a phone test says packs of 10 are not
 enough.
 
-Each sticker owns its anchor, shadow catcher, lights, model and mixer. A GLB
+Each sticker owns its anchor, shadow catcher, lights, model and mixer, but only
+one is ever ON SCREEN (rule 7). A GLB
 downloads on that sticker's **first detection**, cached per campaign for the
 session; only the campaign named in the URL is fetched up front. Twenty
 characters preloaded is an out-of-memory crash on a low-end Android.

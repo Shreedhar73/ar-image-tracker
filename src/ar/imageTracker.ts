@@ -11,6 +11,12 @@
  * MindAR POC read the matrix in its own rAF loop and was reliably one frame
  * behind the camera feed.
  *
+ * ONE AT A TIME: only the most recently found sticker is on screen. Scanning a
+ * second sticker hides the first even while the engine can still see it — the
+ * child is looking at the new character, not running a zoo. A sticker hidden
+ * that way is still `tracked`, so it comes back by itself when the shown one is
+ * dropped, without needing to be re-scanned.
+ *
  * HOLDING: `imagelost` does NOT hide the character. World tracking is on, so
  * the pose the engine last gave us is a WORLD pose that stays valid while the
  * phone moves — the character keeps sitting where the sticker is even though
@@ -66,10 +72,14 @@ export interface TrackedTarget {
   /** Sticker size in scene units, known from this target's first imagefound. */
   readonly scaledWidth: number | null
   readonly scaledHeight: number | null
-  /** On screen: either being tracked right now, or held on its last world pose. */
+  /** On screen. At most one target is visible at a time — the last one found. */
   readonly visible: boolean
-  /** Shown, but the engine is no longer recognising the sticker. */
-  readonly held: boolean
+  /**
+   * The engine can see this sticker right now. True whether or not it is on
+   * screen: a sticker hidden behind a more recently scanned one stays tracked,
+   * and that is what lets it be promoted back when the other one goes.
+   */
+  readonly tracked: boolean
 }
 
 export interface ImageTrackerOptions {
@@ -83,7 +93,10 @@ export interface ImageTrackerOptions {
    * would restart the idle clip over whatever animation the child had chosen.
    */
   onFound?: (target: TrackedTarget) => void
-  /** Fires when a shown sticker is dropped, which is a frustum exit, not `imagelost`. */
+  /**
+   * Fires when a shown sticker is dropped: a frustum exit, or another sticker
+   * being scanned. Not `imagelost`.
+   */
   onLost?: (target: TrackedTarget) => void
   /** SLAM/world-tracking status, straight from the engine. Debug panel only. */
   onTrackingStatus?: (status: string, reason?: string) => void
@@ -103,7 +116,7 @@ interface MutableTarget extends TrackedTarget {
   scaledWidth: number | null
   scaledHeight: number | null
   visible: boolean
-  held: boolean
+  tracked: boolean
   framesOutside: number
 }
 
@@ -119,14 +132,15 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
       scaledWidth: null,
       scaledHeight: null,
       visible: false,
-      held: false,
+      tracked: false,
       framesOutside: 0,
     })
   }
 
   let state = TrackingState.Loading
-  // Insertion order is find order, so the last entry is the sticker the child
-  // most recently pointed at — which is the one the UI should follow.
+  // Holds at most one target — the sticker the child most recently pointed at.
+  // A Set rather than a single field because `ImageTracker.visible` is a list
+  // and callers iterate it.
   const visible = new Set<MutableTarget>()
 
   const setState = (next: TrackingState): void => {
@@ -143,16 +157,39 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
     anchor.scale.setScalar(detail.scale)
   }
 
+  /**
+   * Puts one sticker on screen and takes every other one off it. Shared by
+   * `imagefound` and by the promotion in `hide()` below, so a sticker that
+   * arrives either way gets the same treatment.
+   */
+  const show = (target: MutableTarget): void => {
+    target.anchor.visible = true
+    target.visible = true
+    target.framesOutside = 0
+    visible.add(target)
+    // The newcomer is added BEFORE the others are dropped, so the set is never
+    // empty in between: the UI would otherwise flick through Lost on every
+    // change of sticker.
+    for (const other of [...visible]) {
+      if (other !== target) hide(other)
+    }
+    setState(TrackingState.Found)
+    options.onFound?.(target)
+  }
+
   const hide = (target: MutableTarget): void => {
     target.anchor.visible = false
     target.visible = false
-    target.held = false
     target.framesOutside = 0
     visible.delete(target)
     options.onLost?.(target)
-    // Only when the LAST sticker leaves does the session stop tracking;
-    // losing one of two on screen must not hide the UI for the other.
-    if (visible.size === 0) setState(TrackingState.Lost)
+    if (visible.size > 0) return
+    // Nothing on screen. If the engine can still see another sticker — one that
+    // was hidden because this one was scanned later — put it back up rather
+    // than making the child re-scan a sticker they are already pointing at.
+    const next = [...targets.values()].find((each) => each !== target && each.tracked)
+    if (next) show(next)
+    else setState(TrackingState.Lost)
   }
 
   // Reused every frame: allocating a Matrix4 and a Frustum per frame is garbage
@@ -162,9 +199,10 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
   const bounds = new THREE.Sphere()
 
   const dropHeldTargetsOutOfView = (): void => {
+    // Held = on screen, but the engine has stopped recognising the sticker.
     let anyHeld = false
     for (const target of targets.values()) {
-      if (target.held) {
+      if (target.visible && !target.tracked) {
         anyHeld = true
         break
       }
@@ -179,7 +217,7 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
     frustum.setFromProjectionMatrix(viewProjection)
 
     for (const target of targets.values()) {
-      if (!target.held) continue
+      if (!target.visible || target.tracked) continue
       const extent = Math.max(target.scaledWidth ?? 0, target.scaledHeight ?? 0)
       target.anchor.getWorldPosition(bounds.center)
       bounds.radius = extent * target.anchor.scale.x * HOLD_BOUNDS_FACTOR
@@ -216,22 +254,18 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
         process: ({detail}: {detail: ImageTargetDetail}) => {
           const target = targets.get(detail.name)
           if (!target) return
+          target.tracked = true
           if (detail.scaledWidth !== undefined) target.scaledWidth = detail.scaledWidth
           if (detail.scaledHeight !== undefined) target.scaledHeight = detail.scaledHeight
           applyPose(target, detail)
-          // A held sticker was never off screen: correcting its pose is the
-          // whole event. Only a hidden -> shown transition is a "find".
-          const appeared = !target.visible
-          target.anchor.visible = true
-          target.visible = true
-          target.held = false
-          target.framesOutside = 0
-          if (!appeared) return
-          // Re-insert so this target becomes the most recent.
-          visible.delete(target)
-          visible.add(target)
-          setState(TrackingState.Found)
-          options.onFound?.(target)
+          // A sticker that is already on screen was only ever held: correcting
+          // its pose is the whole event. Re-running the find would restart the
+          // idle clip over whatever the child had chosen.
+          if (target.visible) {
+            target.framesOutside = 0
+            return
+          }
+          show(target)
         },
       },
       {
@@ -245,10 +279,12 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
         event: 'reality.imagelost',
         process: ({detail}: {detail: ImageTargetDetail}) => {
           const target = targets.get(detail.name)
-          if (!target?.visible) return
-          // Hold the last world pose instead of hiding. dropHeldTargetsOutOfView
-          // takes it off screen once the camera is pointed away.
-          target.held = true
+          if (!target) return
+          // The engine has stopped recognising this sticker. If it is on screen
+          // it is now HELD on its last world pose — dropHeldTargetsOutOfView
+          // takes it off once the camera is pointed away. If it was hidden
+          // behind a later scan, it simply stops being a promotion candidate.
+          target.tracked = false
           target.framesOutside = 0
         },
       },
