@@ -60,7 +60,7 @@ export const campaigns = {
     targetJson: "/targets/spider-001/spider-001.json",
     // Quaternius CC0 spider, prepared by tools/prep-glb.mjs. See tools/README.md.
     model: "/models/spider-001.glb",
-    scale: 1,
+    scale: 2,
     idleAnim: "Walk",
     // From `gltf-transform inspect public/models/spider-001.glb`, not from memory.
     animations: ["Idle", "Walk", "Jump", "Attack"],
@@ -78,7 +78,7 @@ export const campaigns = {
     // Only the active build is committed; the rest are local comparison
     // artifacts (see .gitignore).
     model: "/models/dino-001-basecolor-small.glb",
-    scale: 1,
+    scale: 2,
     idleAnim: "Animation",
     // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
     animations: ["Animation"],
@@ -96,7 +96,7 @@ export const campaigns = {
     // Only the active build is committed; the rest are local comparison
     // artifacts (see .gitignore).
     model: "/models/phoenix_bird.glb",
-    scale: 1,
+    scale: 2,
     idleAnim: "Take 001",
     // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
     animations: ["Take 001"],
