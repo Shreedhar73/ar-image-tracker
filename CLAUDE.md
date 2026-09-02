@@ -34,8 +34,12 @@ POC's rendering/animation layer; rewrite the tracking layer; delete the rest.
   luminance). The JSON's `imagePath` must resolve to a URL we serve.
 - The binary is under a limited-use license (commercial use as part of a
   broader experience is permitted). Follow the attribution guidelines at
-  https://8thwall.org/docs/open-source. SLAM is in the binary but we don't
-  need it — set `disableWorldTracking: true`.
+  https://8thwall.org/docs/open-source. SLAM stays ON —
+  `disableWorldTracking: false`. Not for world-tracked content: an image-target
+  pose is a WORLD pose only while SLAM runs, and that is what lets a character
+  hold its place on the sticker after `imagelost` instead of blinking out at
+  the first oblique angle. Turning it off makes poses camera-relative and the
+  holding behaviour in rule 7 becomes a model frozen to the screen.
 - The MIT open-source engine (github.com/8thwall/8thwall, Bazel build) is
   **not** what we use. Only switch if the binary becomes unavailable.
 - Docs: https://8thwall.org/docs/engine/overview · API: https://8thwall.org/docs/api/engine
@@ -79,7 +83,7 @@ src/
   three/ThreeScene.ts     lights, env, shadow catcher, renderer settings (kept from POC)
   three/ModelLoader.ts    GLTFLoader + Draco/meshopt (kept from POC)
   three/AnimationController.ts  mixer + crossfade (kept from POC)
-  ui/                     start screen, scan hint, animation buttons, error screen
+  ui/                     start screen, scan hint, animation buttons (unplugged), error screen
 scripts/compile-target.mjs
 docs/image-target-budget.md  how many stickers one page can track, and the
                           one-field way back to one sticker per link
@@ -108,7 +112,7 @@ Nothing else from 8th Wall touches the scene. No 8th Wall UI packages
    `XR8.Threejs.pipelineModule()` — the module reads the global.
 2. Order matters:
    ```ts
-   XR8.XrController.configure({ disableWorldTracking: true, imageTargetData: [campaign.targetJson] })
+   XR8.XrController.configure({ disableWorldTracking: false, imageTargetData: [campaign.targetJson] })
    XR8.addCameraPipelineModules([
      XR8.GlTextureRenderer.pipelineModule(),
      XR8.Threejs.pipelineModule(),
@@ -138,8 +142,16 @@ Nothing else from 8th Wall touches the scene. No 8th Wall UI packages
    the artwork.) GLBs are authored Y-up, so the model goes under a group
    rotated `+PI/2` about X. The shadow-catcher plane needs no rotation.
 6. Match by `detail.name === campaign.targetName`. Ignore other names.
-7. On `imagelost`, hide immediately (no ghosting). On `imagefound`, show and
-   play idle. Keep a `TrackingState` enum; UI subscribes to it.
+7. `imagelost` does NOT hide the character — it marks the anchor **held** on
+   its last world pose, which SLAM keeps valid as the phone moves. A held
+   anchor is hidden only once it leaves the camera frustum for ~0.5 s
+   (`FRAMES_OUTSIDE_BEFORE_HIDE`), i.e. when the child has pointed the phone
+   somewhere else and the removal cannot be seen. Hiding on `imagelost` is the
+   blink-out bug, not the ghosting fix. Consequently `onFound` fires on a
+   hidden -> shown transition only: a sticker refound while still held gets its
+   pose corrected and nothing else, or every re-detection would restart idle
+   over the animation the child chose. Keep a `TrackingState` enum; UI
+   subscribes to it, and `Found` covers held as well as live.
 8. Torch / zoom: implement only if the docs show a supported way to reach the
    camera `MediaStreamTrack` (check `XR8.run()` options and the
    CameraPipelineModule `onCameraStatusChange` payload). Otherwise drop both
@@ -246,8 +258,15 @@ characters preloaded is an out-of-memory crash on a low-end Android.
   (wrap it once in `ar/xr8.ts` with a minimal typed surface).
 - All files UTF-8 / LF. (The POC had UTF-16 `tsconfig.json` and `tree.json`.)
 - No dead scaffolding: no `counter.ts`, no Vite logos, no debug JSON dumps.
-- Debug panel only when `?debug=1`. Kids see: start button, scan hint,
-  character and animation buttons. Nothing else.
+- Debug panel only when `?debug=1`. Kids see: start button, scan hint and the
+  character. Nothing else.
+- **The animation bar is UNPLUGGED for the POC** — scope call, not a defect.
+  `ANIMATION_BUTTONS_ENABLED` in `src/config/features.ts` is `false`, so
+  `main.ts` builds no bar and the character just plays `idleAnim`. The bar's
+  code (`ui/animationButtons.ts`, the `.anim-*` CSS) stays whole and every use
+  of it in `main.ts` is optional-chained; flipping the constant is the whole
+  way back. `campaign.animations` still lists the clips — it is the contract
+  with the GLB, not with the UI.
 - **Capture is UNPLUGGED for the POC** — out of scope, not broken.
   `CAPTURE_ENABLED` in `src/config/features.ts` is `false`, so `main.ts` never
   calls `wireCapture()` and no capture bar is built. The code stays whole
@@ -278,7 +297,9 @@ characters preloaded is an out-of-memory crash on a low-end Android.
 - Don't reintroduce MindAR, `.mind` files, or filter tuning constants.
 - Don't load three or the engine from jsdelivr at runtime.
 - Don't add a backend. Static hosting only.
-- Don't add world tracking / SLAM features; stickers are image-target only.
+- Don't build ON world tracking: no hit tests, no world-anchored content, no
+  surface placement. SLAM runs (see rule 7) purely so image-target poses are
+  world poses; stickers stay image-target only.
 - Don't ask the user to confirm architecture decisions written here; do ask
   if 8th Wall docs contradict this file (then update this file).
 
@@ -287,9 +308,10 @@ characters preloaded is an out-of-memory crash on a low-end Android.
 1. **Boot**: Vite + engine binary copied + `XR8Promise` resolves on a phone
    over ngrok; camera feed visible. No model.
 2. **Track**: one campaign, CLI-compiled target, cube on the sticker via
-   `imageupdated`. Verify no lag, no ghosting, correct scale at 8 cm.
+   `imageupdated`. Verify no lag, correct scale at 8 cm, and that a covered
+   sticker HOLDS the cube in place rather than dropping it (rule 7).
 3. **Character**: GLB + animations + shadow catcher + lighting from POC.
-4. **Product UI**: start screen, scan hint, animation buttons, error screens,
+4. **Product UI**: start screen, scan hint, error screens,
    `/ar/<id>` routing + `vercel.json`.
 5. **Ship**: Vercel deploy, QR generated for each campaign id, test on
    iOS Safari + Android Chrome, low-end Android included.

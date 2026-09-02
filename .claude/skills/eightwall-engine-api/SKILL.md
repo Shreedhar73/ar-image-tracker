@@ -47,7 +47,7 @@ A hang on the promise almost always means the tag is missing, or
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `disableWorldTracking` | boolean | `false` | Turns off SLAM. Set `true` for this project. |
+| `disableWorldTracking` | boolean | `false` | Turns off SLAM. Leave `false` in this project — image-target poses are world poses only while SLAM runs, which is what lets a character hold its place after `imagelost`. |
 | `enableLighting` | boolean | `false` | Lighting estimate delivered via the pipeline module. |
 | `enableWorldPoints` | boolean | `false` | World points via the pipeline module. |
 | `imageTargetData` | array | — | The image targets to track (the CLI-produced JSON objects). |
@@ -78,7 +78,7 @@ Subscribe via a pipeline module's `listeners` array
 | `imagescanning` | `{ imageTargets: { name, type, metadata, geometry } }` — images loaded, scanning started. Good signal that a target JSON was accepted. |
 | `reality.imagefound` | see payload below — target detected. |
 | `reality.imageupdated` | same payload — position/rotation/scale changed. |
-| `reality.imagelost` | same payload — tracking of that target ended. |
+| `reality.imagelost` | same payload — tracking of that target ended. Docs do not say whether the engine keeps an image-target pose meaningful afterwards; this project holds the last pose and relies on SLAM to keep it world-anchored — a phone test, not a doc, is what confirms that. |
 
 ### Image-target event payload
 

@@ -33,8 +33,8 @@ skips the `vercel.json` / dev-fallback rewrite, which is where routing bugs live
   the Mac → Develop → device → the tab.
 - **Neither available:** `?debug=1` panel (the only sanctioned debug UI). Show
   tracking state, last event name, `scaledWidth`, fps. Nothing else, and never
-  visible without the flag — kids see start button, scan hint, character,
-  animation buttons.
+  visible without the flag — kids see start button, scan hint and the
+  character. (The animation bar is unplugged: `ANIMATION_BUTTONS_ENABLED`.)
 
 ## Per-phase acceptance
 
@@ -53,7 +53,12 @@ skips the `vercel.json` / dev-fallback rewrite, which is where routing bugs live
       phone and a tablet (this proves `scaledWidth` sizing, not a hardcoded scale)
 - [ ] Moving the phone: **no visible lag** between sticker and cube — if the
       cube trails, the pose is not being applied in the event handler
-- [ ] Covering the sticker hides the cube **immediately**, no ghost frame
+- [ ] Covering the sticker LEAVES the cube where the sticker is (holding is the
+      designed behaviour since SLAM went on — see CLAUDE.md AR contract rule 7).
+      It must not slide or float with the camera: that would mean the pose is
+      camera-relative, and holding is wrong
+- [ ] Panning until the sticker is off screen drops the cube within ~0.5 s;
+      panning back re-finds it with no visible pop
 - [ ] Steep viewing angle (~60°) still tracks
 - [ ] Printed sticker under glare still tracks; note the failure angle
 
@@ -72,8 +77,9 @@ skips the `vercel.json` / dev-fallback rewrite, which is where routing bugs live
 ### Phase 4 — Product UI
 - [ ] Start screen → camera permission → scan hint → character, no dead ends
 - [ ] Scan hint disappears on found, returns on lost
-- [ ] Every animation button plays its clip and crossfades cleanly
-- [ ] Buttons reachable one-handed; tap targets ≥ 44 px
+- [ ] No animation bar on screen (`ANIMATION_BUTTONS_ENABLED` is `false`); the
+      character plays its idle clip and nothing else is offered
+- [ ] Tap targets that ARE on screen reachable one-handed, ≥ 44 px
 - [ ] `/ar/<id>` loads directly (deep link, and a fresh tab)
 - [ ] Unknown id → the error screen, never a fallback campaign
 - [ ] **Camera denied** → error screen with one action, and recovering after
