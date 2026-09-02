@@ -25,8 +25,9 @@ import {createAnimationController} from './three/AnimationController'
 import type {AnimationController} from './three/AnimationController'
 import {capturePhoto, createRecorder, isRecordingSupported, releaseCapture, shareCapture} from './capture/capture'
 import type {Capture} from './capture/capture'
-import {CAPTURE_ENABLED} from './config/features'
+import {ANIMATION_BUTTONS_ENABLED, CAPTURE_ENABLED} from './config/features'
 import {createAnimationButtons} from './ui/animationButtons'
+import type {AnimationButtons} from './ui/animationButtons'
 import {createCaptureBar} from './ui/captureBar'
 import type {CaptureBar} from './ui/captureBar'
 import {showCapturePreview} from './ui/capturePreview'
@@ -114,10 +115,15 @@ async function main(): Promise<void> {
   }
 
   const scanHint = createScanHint(ui)
-  const buttons = createAnimationButtons(ui, (name) => {
-    active?.animation?.play(name)
-    buttons.setActive(name)
-  })
+  // Unplugged for the POC — see ANIMATION_BUTTONS_ENABLED. Null means no bar is
+  // built and the character just plays its idle clip; every use below is
+  // optional-chained, so flipping the flag is the only change needed.
+  const buttons: AnimationButtons | null = ANIMATION_BUTTONS_ENABLED
+    ? createAnimationButtons(ui, (name) => {
+        active?.animation?.play(name)
+        buttons?.setActive(name)
+      })
+    : null
 
   /** The sticker the UI is following: the one most recently brought into view. */
   let active: TargetRuntime | null = null
@@ -136,7 +142,10 @@ async function main(): Promise<void> {
       debug?.set('tracking', state)
       const found = state === TrackingState.Found
       scanHint.setVisible(!found)
-      buttons.setVisible(found)
+      buttons?.setVisible(found)
+    },
+    onTrackingStatus: (status, reason) => {
+      debug?.set('slam', reason ? `${status} (${reason})` : status)
     },
     onFound: (target) => {
       const runtime = runtimes.get(target.name)
@@ -149,7 +158,7 @@ async function main(): Promise<void> {
     onLost: (target) => {
       debug?.set('found', tracker.visible.map((each) => each.name).join(', ') || 'none')
       if (active?.target !== target) return
-      // With two stickers in view, losing the active one leaves the buttons up
+      // With two stickers on screen, dropping the active one leaves the buttons up
       // — they must move to the sticker still on screen, or they drive a model
       // nobody can see any more.
       const next = tracker.visible.at(-1)
@@ -161,14 +170,14 @@ async function main(): Promise<void> {
   /** Points the UI at one sticker: its clips, and whichever of them is playing. */
   const follow = (runtime: TargetRuntime): void => {
     active = runtime
-    buttons.setNames(runtime.campaign.animations)
-    buttons.setActive(runtime.animation?.current ?? null)
+    buttons?.setNames(runtime.campaign.animations)
+    buttons?.setActive(runtime.animation?.current ?? null)
   }
 
   const playIdle = (runtime: TargetRuntime): void => {
     if (!runtime.animation) return
     runtime.animation.play(runtime.campaign.idleAnim)
-    if (active === runtime) buttons.setActive(runtime.campaign.idleAnim)
+    if (active === runtime) buttons?.setActive(runtime.campaign.idleAnim)
   }
 
   /**
