@@ -60,7 +60,7 @@ export const campaigns = {
     targetJson: "/targets/spider/spider.json",
     // Quaternius CC0 spider, prepared by tools/prep-glb.mjs. See tools/README.md.
     model: "/models/spider-001.glb",
-    scale: 2,
+    scale: 1,
     idleAnim: "Walk",
     // From `gltf-transform inspect public/models/spider-001.glb`, not from memory.
     animations: ["Idle", "Walk", "Jump", "Attack"],
