@@ -15,7 +15,7 @@ import {loadSessionTargets, resolveSession} from './config/campaigns'
 import type {CampaignEntry} from './config/campaigns'
 import {createImageTracker, TrackingState} from './ar/imageTracker'
 import type {TrackedTarget} from './ar/imageTracker'
-import {loadXR8, startAR, xrScene} from './ar/xr8'
+import {loadXR8, startAR, worldTrackingAvailable, xrScene} from './ar/xr8'
 import type {PipelineModule} from './ar/xr8'
 import {createAnchorRig, fitToTarget, setupRenderer} from './three/ThreeScene'
 import type {SceneRig} from './three/ThreeScene'
@@ -136,8 +136,14 @@ async function main(): Promise<void> {
     ? wireCapture(ui, canvas, () => active?.campaign.id ?? session.id)
     : null
 
+  // False on a laptop: the engine will not run SLAM there, so the tracker
+  // must drop a lost sticker instead of holding it. Phones are unaffected.
+  const slam = worldTrackingAvailable()
+  debug?.set('world', slam ? 'slam on' : 'slam off (non-mobile device)')
+
   const tracker = createImageTracker({
     targetNames: session.campaigns.map((campaign) => campaign.targetName),
+    holdAfterLost: slam,
     onStateChange: (state) => {
       debug?.set('tracking', state)
       const found = state === TrackingState.Found

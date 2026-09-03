@@ -36,7 +36,7 @@ export interface ImageTargetDetail {
   scaledHeight?: number;
 }
 
-/** Payload of `trackingStatus`. Emitted when world tracking starts or changes. */
+/** Payload of `reality.trackingstatus`. Emitted when world tracking starts or changes. */
 export interface TrackingStatusDetail {
   status: string;
   reason?: string;
@@ -111,6 +111,30 @@ function sizeCanvasToViewport(canvas: HTMLCanvasElement): void {
   canvas.style.height = "100%";
 }
 
+/**
+ * Whether the engine will run SLAM on this device.
+ *
+ * Mirrors the engine's own gate, read out of xr-slam.js: XrController's
+ * `onBeforeSessionInitialize` throws
+ * "[XR] Reality with camera on non-mobile devices requires disableWorldTracking"
+ * when world tracking is on and `isDeviceBrowserCompatible` fails for
+ * `allowedDevices: MOBILE`. With that veto the engine falls through to its
+ * desktop3d session, which cannot host image targets, and `run()` dies with
+ * "No valid session manager to handle this session." — the "Something went
+ * wrong" screen on a laptop.
+ *
+ * So SLAM is on wherever the engine allows it (every phone) and off only where
+ * it would refuse to start. Desktop is a TESTING mode: without SLAM the
+ * image-target pose is camera-relative, so `imageTracker` must not hold a lost
+ * sticker there (see `holdAfterLost`). Needs `loadXR8()` to have resolved.
+ */
+export function worldTrackingAvailable(): boolean {
+  const XR8 = requireXR8();
+  return XR8.XrDevice.isDeviceBrowserCompatible({
+    allowedDevices: XR8.XrConfig.device().MOBILE,
+  }) as boolean;
+}
+
 export interface StartArOptions {
   canvas: HTMLCanvasElement;
   /** Parsed target JSON produced by @8thwall/image-target-cli. Empty = no image tracking. */
@@ -140,10 +164,13 @@ export function startAR(options: StartArOptions): void {
   sizeCanvasToViewport(options.canvas);
 
   XR8.XrController.configure({
-    // SLAM ON. Image-target poses are then WORLD poses, which is what lets the
-    // character stay on the sticker after `imagelost` instead of blinking out
-    // at the first oblique angle. See the holding note in ar/imageTracker.ts.
-    disableWorldTracking: false,
+    // SLAM ON wherever the engine permits it. Image-target poses are then
+    // WORLD poses, which is what lets the character stay on the sticker after
+    // `imagelost` instead of blinking out at the first oblique angle. See the
+    // holding note in ar/imageTracker.ts. Off ONLY on non-mobile devices,
+    // where the engine refuses to start a camera session with SLAM at all —
+    // see worldTrackingAvailable().
+    disableWorldTracking: !worldTrackingAvailable(),
     imageTargetData: options.imageTargetData,
   });
 

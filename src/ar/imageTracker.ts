@@ -25,6 +25,12 @@
  * this exists. A held anchor is dropped only once it leaves the camera
  * frustum: by then the child has pointed the phone somewhere else and the
  * removal is invisible.
+ *
+ * Holding needs SLAM. Where the engine refuses to run it (a laptop — see
+ * `worldTrackingAvailable` in ar/xr8.ts) the pose is camera-relative, the
+ * camera never moves, and a held anchor would never leave the frustum: the
+ * character would sit frozen on screen for the rest of the session. There
+ * `holdAfterLost` is false and `imagelost` hides the sticker at once.
  */
 import * as THREE from 'three'
 
@@ -100,6 +106,12 @@ export interface ImageTrackerOptions {
   onLost?: (target: TrackedTarget) => void
   /** SLAM/world-tracking status, straight from the engine. Debug panel only. */
   onTrackingStatus?: (status: string, reason?: string) => void
+  /**
+   * Keep a sticker on screen after `imagelost`, on its last world pose.
+   * Default true. Pass false when SLAM is off — without it the pose is
+   * camera-relative and a held anchor can never be dropped by the frustum test.
+   */
+  holdAfterLost?: boolean
 }
 
 export interface ImageTracker {
@@ -136,6 +148,8 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
       framesOutside: 0,
     })
   }
+
+  const holdAfterLost = options.holdAfterLost ?? true
 
   let state = TrackingState.Loading
   // Holds at most one target — the sticker the child most recently pointed at.
@@ -237,14 +251,20 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
       {
         // SLAM state. Nothing here reads it — it exists so a phone can say
         // whether world tracking had converged when a sticker was held.
-        event: 'trackingStatus',
+        // Lowercase and `reality.`-prefixed in the binary (the docs say
+        // `trackingStatus`): the engine names every event `<module>.<event>`
+        // and XrController's module is `reality`. Fires with SLAM off too
+        // (NORMAL / LIMITED on a laptop).
+        event: 'reality.trackingstatus',
         process: ({detail}: {detail: TrackingStatusDetail}) =>
           options.onTrackingStatus?.(detail.status, detail.reason),
       },
       {
         // Target images finished loading and the engine started scanning.
-        // Never firing means a target JSON's imagePath 404s.
-        event: 'imagescanning',
+        // Never firing means a target JSON's imagePath 404s. The engine
+        // prefixes this like the found/lost events (`reality.`) — the docs list
+        // it bare, and bare it never fires (verified in Chrome, 2026-09-03).
+        event: 'reality.imagescanning',
         process: () => {
           if (visible.size === 0) setState(TrackingState.Scanning)
         },
@@ -286,6 +306,9 @@ export function createImageTracker(options: ImageTrackerOptions): ImageTracker {
           // behind a later scan, it simply stops being a promotion candidate.
           target.tracked = false
           target.framesOutside = 0
+          // No SLAM, no world pose to hold: drop it now. `tracked` is already
+          // false, so hide() cannot promote this same sticker straight back.
+          if (!holdAfterLost && target.visible) hide(target)
         },
       },
     ],

@@ -47,7 +47,7 @@ A hang on the promise almost always means the tag is missing, or
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `disableWorldTracking` | boolean | `false` | Turns off SLAM. Leave `false` in this project — image-target poses are world poses only while SLAM runs, which is what lets a character hold its place after `imagelost`. |
+| `disableWorldTracking` | boolean | `false` | Turns off SLAM. `false` on every phone — image-target poses are world poses only while SLAM runs, which is what lets a character hold its place after `imagelost`. **The engine forces it `true` on non-mobile devices** (verified in `xr-slam.js`): XrController's `onBeforeSessionInitialize` throws `"[XR] Reality with camera on non-mobile devices requires disableWorldTracking"` when it is `false` and `XrDevice.isDeviceBrowserCompatible({allowedDevices: MOBILE})` is false; `run()` then fails with `"No valid session manager to handle this session."`. `worldTrackingAvailable()` in `ar/xr8.ts` mirrors that exact check. |
 | `enableLighting` | boolean | `false` | Lighting estimate delivered via the pipeline module. |
 | `enableWorldPoints` | boolean | `false` | World points via the pipeline module. |
 | `imageTargetData` | array | — | The image targets to track (the CLI-produced JSON objects). |
@@ -73,9 +73,9 @@ Subscribe via a pipeline module's `listeners` array
 
 | Event | `detail` |
 | --- | --- |
-| `trackingStatus` | `{ status, reason }` — fires when tracking starts or status changes. |
-| `imageloading` | `{ imageTargets: { name, type, metadata } }` — detection images began loading. |
-| `imagescanning` | `{ imageTargets: { name, type, metadata, geometry } }` — images loaded, scanning started. Good signal that a target JSON was accepted. |
+| `reality.trackingstatus` | `{ status, reason }` — fires when tracking starts or status changes. Docs say `trackingStatus`; the binary dispatches lowercase `trackingstatus` from the `reality` module, and the engine names every pipeline event `<module>.<event>`. Fires with SLAM off too (`NORMAL` / `LIMITED` on a laptop). |
+| `reality.imageloading` | `{ imageTargets: { name, type, metadata } }` — detection images began loading. The docs list this bare as `imageloading`; the engine dispatches it with the `reality.` prefix and the bare name never fires (verified in the binary + Chrome, 2026-09-03). |
+| `reality.imagescanning` | `{ imageTargets: { name, type, metadata, geometry } }` — images loaded, scanning started. Good signal that a target JSON was accepted. Same prefix caveat as `imageloading`. |
 | `reality.imagefound` | see payload below — target detected. |
 | `reality.imageupdated` | same payload — position/rotation/scale changed. |
 | `reality.imagelost` | same payload — tracking of that target ended. Docs do not say whether the engine keeps an image-target pose meaningful afterwards; this project holds the last pose and relies on SLAM to keep it world-anchored — a phone test, not a doc, is what confirms that. |

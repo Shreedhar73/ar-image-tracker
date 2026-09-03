@@ -40,6 +40,17 @@ POC's rendering/animation layer; rewrite the tracking layer; delete the rest.
   hold its place on the sticker after `imagelost` instead of blinking out at
   the first oblique angle. Turning it off makes poses camera-relative and the
   holding behaviour in rule 7 becomes a model frozen to the screen.
+  **One exception, forced by the engine, not chosen:** on a non-mobile device
+  (laptop Chrome) XrController refuses a camera session with SLAM on —
+  `"[XR] Reality with camera on non-mobile devices requires disableWorldTracking"`
+  in `xr-slam.js`, surfacing as `"No valid session manager to handle this
+  session."` and the "Something went wrong" screen. `worldTrackingAvailable()`
+  in `ar/xr8.ts` mirrors the engine's own gate
+  (`isDeviceBrowserCompatible({allowedDevices: MOBILE})`), SLAM is off only
+  where that is false, and the tracker then hides on `imagelost` instead of
+  holding (`holdAfterLost`) — a camera-relative anchor never leaves the
+  frustum, so holding would leave the character stuck on screen. Desktop is a
+  TESTING mode; phones are untouched.
 - The MIT open-source engine (github.com/8thwall/8thwall, Bazel build) is
   **not** what we use. Only switch if the binary becomes unavailable.
 - Docs: https://8thwall.org/docs/engine/overview · API: https://8thwall.org/docs/api/engine
