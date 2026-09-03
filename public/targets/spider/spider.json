@@ -1,0 +1,21 @@
+{
+  "imagePath": "/targets/spider/spider_luminance.jpg",
+  "metadata": null,
+  "name": "spider",
+  "type": "PLANAR",
+  "properties": {
+    "left": 0,
+    "top": 0,
+    "width": 3024,
+    "height": 4032,
+    "isRotated": false,
+    "originalWidth": 3024,
+    "originalHeight": 4032
+  },
+  "resources": {
+    "thumbnailImage": "spider_thumbnail.jpg",
+    "luminanceImage": "spider_luminance.jpg"
+  },
+  "created": 1788423845592,
+  "updated": 1788423845592
+}

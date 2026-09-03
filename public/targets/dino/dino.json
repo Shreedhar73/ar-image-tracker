@@ -1,0 +1,21 @@
+{
+  "imagePath": "/targets/dino/dino_luminance.jpg",
+  "metadata": null,
+  "name": "dino",
+  "type": "PLANAR",
+  "properties": {
+    "left": 88,
+    "top": 0,
+    "width": 957,
+    "height": 1276,
+    "isRotated": false,
+    "originalWidth": 1133,
+    "originalHeight": 1276
+  },
+  "resources": {
+    "thumbnailImage": "dino_thumbnail.jpg",
+    "luminanceImage": "dino_luminance.jpg"
+  },
+  "created": 1788423773436,
+  "updated": 1788423773436
+}

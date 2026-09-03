@@ -55,9 +55,9 @@ export interface Campaign {
 }
 
 export const campaigns = {
-  "spider-001": {
-    targetName: "spider-001",
-    targetJson: "/targets/spider-001/spider-001.json",
+  spider: {
+    targetName: "spider",
+    targetJson: "/targets/spider/spider.json",
     // Quaternius CC0 spider, prepared by tools/prep-glb.mjs. See tools/README.md.
     model: "/models/spider-001.glb",
     scale: 2,
@@ -66,9 +66,9 @@ export const campaigns = {
     animations: ["Idle", "Walk", "Jump", "Attack"],
     pack: "creatures",
   },
-  "dino-001": {
-    targetName: "dino-001",
-    targetJson: "/targets/dino-001/dino-001.json",
+  dino: {
+    targetName: "dino",
+    targetJson: "/targets/dino/dino.json",
     // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
     // path to compare. See tools/README.md.
     //   dino-001.glb                    original download; renders WHITE
@@ -84,56 +84,56 @@ export const campaigns = {
     animations: ["Animation"],
     pack: "creatures",
   },
-  frog: {
-    targetName: "frog",
-    targetJson: "/targets/frog/frog.json",
-    model: "/models/frog.glb",
-    scale: 2,
-    // This GLB ships exactly one clip, named "New" by whatever exported it.
-    // Read out of the file's JSON chunk, not from memory — "Animation" (copied
-    // from the dino entry) matches nothing here and leaves the frog frozen.
-    idleAnim: "New",
-    animations: ["New"],
-    pack: "creatures",
-  },
-  phoenix: {
-    targetName: "phoenix",
-    targetJson: "/targets/phoenix/phoenix.json",
-    // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
-    // path to compare. See tools/README.md.
-    //   dino-001.glb                    original download; renders WHITE
-    //   dino-001-basecolor.glb          same textures at full PNG size, 5.07 MB
-    //   dino-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
-    //   dino-001-metalrough.glb         full conversion, adds a derived map
-    // Only the active build is committed; the rest are local comparison
-    // artifacts (see .gitignore).
-    model: "/models/phoenix_bird.glb",
-    scale: 2,
-    idleAnim: "Take 001",
-    // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
-    animations: ["Take 001"],
-    pack: "creatures",
-  },
-  spiderman: {
-    targetName: "spiderman",
-    // Compiled from art/spider-001.png — the GENERATED sticker (confetti,
-    // corner marks, cartoon spider), not the notebook photo that spider-001
-    // was retargeted onto in e42cb4a. Its luminance image is the better of the
-    // two against the artwork gate: contrast everywhere, no flat expanse.
-    targetJson: "/targets/spiderman/spiderman.json",
-    // POC ONLY — red-and-blue webbing is somebody else's trade dress. Swap to
-    // /models/webhero-001.glb (identical rig, identical clips, original teal
-    // costume) before ANY print run or public deploy. See tools/README.md,
-    // "webhero-001.glb".
-    model: "/models/webhero-001-spider-poc.glb",
-    scale: 1,
-    idleAnim: "Idle",
-    // From `node tools/glb-doctor.mjs public/models/webhero-001-spider-poc.glb`,
-    // not from memory. The GLB also carries "Climb", left off the button row to
-    // keep it to four.
-    animations: ["Idle", "Web Shoot", "Jump", "Perch"],
-    pack: "heroes",
-  },
+  // frog: {
+  //   targetName: "frog",
+  //   targetJson: "/targets/frog/frog.json",
+  //   model: "/models/frog.glb",
+  //   scale: 2,
+  //   // This GLB ships exactly one clip, named "New" by whatever exported it.
+  //   // Read out of the file's JSON chunk, not from memory — "Animation" (copied
+  //   // from the dino entry) matches nothing here and leaves the frog frozen.
+  //   idleAnim: "New",
+  //   animations: ["New"],
+  //   pack: "creatures",
+  // },
+  // phoenix: {
+  //   targetName: "phoenix",
+  //   targetJson: "/targets/phoenix/phoenix.json",
+  //   // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
+  //   // path to compare. See tools/README.md.
+  //   //   dino-001.glb                    original download; renders WHITE
+  //   //   dino-001-basecolor.glb          same textures at full PNG size, 5.07 MB
+  //   //   dino-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
+  //   //   dino-001-metalrough.glb         full conversion, adds a derived map
+  //   // Only the active build is committed; the rest are local comparison
+  //   // artifacts (see .gitignore).
+  //   model: "/models/phoenix_bird.glb",
+  //   scale: 2,
+  //   idleAnim: "Take 001",
+  //   // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
+  //   animations: ["Take 001"],
+  //   pack: "creatures",
+  // },
+  // spiderman: {
+  //   targetName: "spiderman",
+  //   // Compiled from art/spider-001.png — the GENERATED sticker (confetti,
+  //   // corner marks, cartoon spider), not the notebook photo that spider-001
+  //   // was retargeted onto in e42cb4a. Its luminance image is the better of the
+  //   // two against the artwork gate: contrast everywhere, no flat expanse.
+  //   targetJson: "/targets/spiderman/spiderman.json",
+  //   // POC ONLY — red-and-blue webbing is somebody else's trade dress. Swap to
+  //   // /models/webhero-001.glb (identical rig, identical clips, original teal
+  //   // costume) before ANY print run or public deploy. See tools/README.md,
+  //   // "webhero-001.glb".
+  //   model: "/models/webhero-001-spider-poc.glb",
+  //   scale: 1,
+  //   idleAnim: "Idle",
+  //   // From `node tools/glb-doctor.mjs public/models/webhero-001-spider-poc.glb`,
+  //   // not from memory. The GLB also carries "Climb", left off the button row to
+  //   // keep it to four.
+  //   animations: ["Idle", "Web Shoot", "Jump", "Perch"],
+  //   pack: "heroes",
+  // },
   superman: {
     targetName: "superman",
     // Compiled from art/superman.jpg, a photo of a costumed statue lit from the
@@ -159,7 +159,7 @@ export const campaigns = {
     // from memory. tools/slim-glb.mjs cut the source's 180 clips to exactly
     // these four, so the GLB carries nothing else to show.
     animations: ["Laser", "Jump", "Idle", "Fly"],
-    pack: "heroes",
+    pack: "creatures",
   },
 } satisfies Record<string, Campaign>;
 

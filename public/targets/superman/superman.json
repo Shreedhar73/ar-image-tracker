@@ -5,17 +5,17 @@
   "type": "PLANAR",
   "properties": {
     "left": 0,
-    "top": 54,
-    "width": 640,
-    "height": 853,
+    "top": 120,
+    "width": 974,
+    "height": 1299,
     "isRotated": false,
-    "originalWidth": 640,
-    "originalHeight": 960
+    "originalWidth": 974,
+    "originalHeight": 1539
   },
   "resources": {
     "thumbnailImage": "superman_thumbnail.jpg",
     "luminanceImage": "superman_luminance.jpg"
   },
-  "created": 1788241605507,
-  "updated": 1788241605507
+  "created": 1788423933185,
+  "updated": 1788423933185
 }
