@@ -59,24 +59,12 @@ export const campaigns = {
     targetName: "spider",
     targetJson: "/targets/spider/spider.json",
     // Quaternius CC0 spider, prepared by tools/prep-glb.mjs. See tools/README.md.
-    model: "/models/spider-001.glb",
-    scale: 1,
-    idleAnim: "Walk",
-    // From `gltf-transform inspect public/models/spider-001.glb`, not from memory.
-    animations: ["Idle", "Walk", "Jump", "Attack"],
-    pack: "creatures",
-  },
-  dino: {
-    targetName: "dino",
-    targetJson: "/targets/dino/dino.json",
-    // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
-    // path to compare. See tools/README.md.
-    //   dino-001.glb                    original download; renders WHITE
-    //   dino-001-basecolor.glb          same textures at full PNG size, 5.07 MB
-    //   dino-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
-    //   dino-001-metalrough.glb         full conversion, adds a derived map
-    // Only the active build is committed; the rest are local comparison
-    // artifacts (see .gitignore).
+    // model: "/models/spider-001.glb",
+    // scale: 1,
+    // idleAnim: "Walk",
+    // // From `gltf-transform inspect public/models/spider-001.glb`, not from memory.
+    // animations: ["Idle", "Walk", "Jump", "Attack"],
+    // pack: "creatures",
     model: "/models/dino-001-basecolor-small.glb",
     scale: 2,
     idleAnim: "Animation",
@@ -84,6 +72,24 @@ export const campaigns = {
     animations: ["Animation"],
     pack: "creatures",
   },
+  // dino: {
+  //   targetName: "dino",
+  //   targetJson: "/targets/dino/dino.json",
+  //   // Four builds of the same Sketchfab T-Rex are in public/models/ — swap the
+  //   // path to compare. See tools/README.md.
+  //   //   dino-001.glb                    original download; renders WHITE
+  //   //   dino-001-basecolor.glb          same textures at full PNG size, 5.07 MB
+  //   //   dino-001-basecolor-small.glb    active: those textures re-encoded, 1.18 MB
+  //   //   dino-001-metalrough.glb         full conversion, adds a derived map
+  //   // Only the active build is committed; the rest are local comparison
+  //   // artifacts (see .gitignore).
+  //   model: "/models/dino-001-basecolor-small.glb",
+  //   scale: 2,
+  //   idleAnim: "Animation",
+  //   // This Sketchfab T-Rex ships exactly one clip, literally named "Animation".
+  //   animations: ["Animation"],
+  //   pack: "creatures",
+  // },
   // frog: {
   //   targetName: "frog",
   //   targetJson: "/targets/frog/frog.json",
