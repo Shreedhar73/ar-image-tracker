@@ -4,18 +4,18 @@
   "name": "dino",
   "type": "PLANAR",
   "properties": {
-    "left": 88,
+    "left": 71,
     "top": 0,
-    "width": 957,
-    "height": 1276,
-    "isRotated": false,
-    "originalWidth": 1133,
-    "originalHeight": 1276
+    "width": 557,
+    "height": 742,
+    "isRotated": true,
+    "originalWidth": 698,
+    "originalHeight": 742
   },
   "resources": {
     "thumbnailImage": "dino_thumbnail.jpg",
     "luminanceImage": "dino_luminance.jpg"
   },
-  "created": 1788423773436,
-  "updated": 1788423773436
+  "created": 1789536722306,
+  "updated": 1789536722306
 }
